@@ -25,7 +25,7 @@ def extract_training_folders(behavior_folder, training_folders):
     plot_title = "Learning Curve - " + behavior
 
     for d in sub_dirs:
-        if 'd_2' in d:
+        if 'd_2d' in d:
             continue
         elif 'mixed_motions' in d:
             continue
@@ -56,7 +56,8 @@ def extract_training_folders(behavior_folder, training_folders):
     return behavior, training_folders
 
 
-def extract_plot_info(training_folders):
+def extract_plot_info(training_folders, step_size = 400, verbose=False,
+                      multi_train=False, first_trained=False):
     plot_dicts_list_all = []
     plot_dicts_list_R0 = []
     plot_dicts_list_R1 = []
@@ -86,11 +87,13 @@ def extract_plot_info(training_folders):
             learning_curve_data['reward_type'] = 'R0'
             learning_curve_data['reward_no'] = 0
 
+        if 'centered' in d:
+            learning_curve_data['centered'] = True
+        else:
+            learning_curve_data['centered'] = False
+
         if 'pca_activation_euler' in d:
             learning_curve_data['type'] = 'PCA'
-            # dims = re.search('euler_(.*)d_', d)
-            # if dims is None:
-            #     dims = re.search('euler_(.*)d', d)
             dims = re.search('centered_(.*)d_', d)
             if dims is None:
                 dims = re.search('euler_(.*)d_', d)
@@ -112,30 +115,41 @@ def extract_plot_info(training_folders):
             learning_curve_data['dims'] = dims
             learning_curve_data['label'] = str(dims) + 'D'
 
-        if learning_curve_data['type'] in ['PCA','ICA']:
-            learning_curve_data['label'] = \
-                learning_curve_data['type'] + '-' + str(dims) + 'D' + '-' + \
-                learning_curve_data['reward_type']
-        else:
-            learning_curve_data['label'] = learning_curve_data['type'] + '-' \
-                                           + learning_curve_data['reward_type']
+        if verbose:
+            if learning_curve_data['type'] in ['PCA','ICA']:
+                learning_curve_data['label'] = \
+                    learning_curve_data['type'] + '-' + str(dims) + 'D'# + '-' + \
+                    #learning_curve_data['reward_type']
+            else:
+                learning_curve_data['label'] = learning_curve_data['type'] + '-' \
+                                               + learning_curve_data['reward_type']
 
         try:
             with open(d+'/agent0_log.txt') as f:
                 lines = f.read().splitlines()
         except:
             continue
-
         del lines[0]
 
         learning_iterations = []
+        line_array = np.zeros(5)
+        iter_offset = np.zeros(5)
         for line in lines:
             try:
                 line_array = np.array(line.split()[0:5], dtype=np.float32)
+                line_array += iter_offset
             except: # Encountered "Iterations...", which indicates a new training run
-                learning_iterations = []
+                if multi_train:
+                    if first_trained:
+                        break
+                    else:
+                        iter_offset = np.copy(line_array)
+                        iter_offset[3:5] = 0
+                else:
+                    print("Warning: Multi-Train Encountered in folder:", d)
+                    learning_iterations = []
                 continue
-            if line_array[0] % 400 == 0:
+            if line_array[0] % step_size == 0:
                 learning_iterations.append(line_array)
 
         learning_matrix =  np.array(learning_iterations)
@@ -168,14 +182,17 @@ def extract_plot_info(training_folders):
 
 
 def select_and_sort_plots_dicts(plot_dicts_list, plot_dims, reward_fn, baseline,
-                                pca, ica):
+                                pca, ica, centered):
     plots_list = []
     for i, plot in enumerate(plot_dicts_list):
         if plot['dims'] in plot_dims and plot['reward_no'] in reward_fn:
             if baseline and plot['type'] == 'Baseline':
                 plots_list.append(plot)
             elif pca and plot['type'] == 'PCA':
-                plots_list.append(plot)
+                if centered and not plot['centered']:
+                    continue
+                else:
+                    plots_list.append(plot)
             elif ica and plot['type'] == 'ICA':
                 plots_list.append(plot)
 
@@ -197,13 +214,12 @@ def output_returns(sorted_plots_list, sample_threshold):
                 learning_matrix = learning_matrix[0:i]
                 break
 
-        #print("Max. Train_Return: ", np.max(learning_matrix[:,1]))
         print("Max. Test_Return: ", np.max(learning_matrix[:,2]))
+    return
 
 
-def plot_2D(sorted_plots_list, plot_title, x_upper, x_axis_label, y_axis_label,
-            legend):
-    x_axis = 'Samples'
+def plot_2D(sorted_plots_list, x_axis, plot_title, x_upper, x_axis_label, x_lim,
+            y_axis_label, legend):
     lc = ['xkcd:red', 'xkcd:blue', 'xkcd:green', 'xkcd:brown', 'xkcd:pink',
           'xkcd:purple', 'xkcd:orange', 'xkcd:magenta', 'xkcd:tan', 'xkcd:black',
           'xkcd:cyan', 'xkcd:gold', 'xkcd:dark green', 'xkcd:cream',
@@ -213,12 +229,13 @@ def plot_2D(sorted_plots_list, plot_title, x_upper, x_axis_label, y_axis_label,
           'xkcd:dark grey', 'xkcd:crimson', 'xkcd:eggplant', 'xkcd:coral']
     ls = ['-', '--', '-.', ':']
     lw = 2.0
+    fs = 20
     plt.rcParams.update({'font.size': 52})
-    plt.rcParams['xtick.labelsize']=15
-    plt.rcParams['ytick.labelsize']=15
+    plt.rcParams['xtick.labelsize']=20
+    plt.rcParams['ytick.labelsize']=20
 
     fig = plt.figure()
-    fig.suptitle(plot_title, fontsize=18)
+    fig.suptitle(plot_title, fontsize=22)
     ax = fig.add_subplot(1, 1, 1)
 
     for i, plot in enumerate(sorted_plots_list):
@@ -227,40 +244,49 @@ def plot_2D(sorted_plots_list, plot_title, x_upper, x_axis_label, y_axis_label,
                 linewidth=lw, color=lc[i%30], label=lab)
 
     if x_axis_label:
-        ax.set_xlabel(x_axis, fontsize=15)
+        ax.set_xlabel(x_axis, fontsize=fs)
     if y_axis_label:
-        ax.set_ylabel('Normalised Test Return', fontsize=15)
+        ax.set_ylabel('Normalized Test Return', fontsize=fs)
     if x_upper is not None:
         _, upper = ax.get_xlim()
         if upper > x_upper:
             ax.set_xlim(0, x_upper)
     ax.set_yticks(np.arange(0, 1.1, step=0.2))
+    if x_lim is not None:
+        ax.set_xlim(0, x_lim)
     ax.grid(linestyle="--", linewidth=0.5, color='.25', zorder=-10)
     ax.set_facecolor('xkcd:white')
     if legend:
-        #ax.legend(bbox_to_anchor=(1.03, 0.35), prop={'size': 15})
-        #ax.legend(loc=4, prop={'size': 15})
-        ax.legend(prop={'size': 15})
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0 + box.height * 0.15, box.width,
+                         box.height * 0.9])
 
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.17), fancybox=True,
+                  shadow=True, ncol=4, prop={'size': 15})
     return
 
 
 def usage():
     print("Usage: learning_curve_plot.py [-a | --x_axis_label] \n"
           "                              [-b | --baseline] \n"
+          "                              [-c | --centered] \n"
           "                              "
           "[-d | --dims_list] <list of reward fn: pos-values (include), neg-values (exclude)> \n"
+          "                              [-f | --first_trained] \n"
           "                              [-g | --legend] \n"
           "                              [-h | --help] \n"
           "                              [-i | --ica] \n"
           "                              [-l | --location] <input folder location> \n"
+          "                              [-m | --multi_train] \n"
           "                              [-n | --iterations] \n"
           "                              [-o | --output_return] \n"
           "                              [-p | --pca] \n"
           "                              "
           "[-r | --reward_fn] <list of reward fn: pos-values (include), neg-values (exclude)> \n"
           "                              [-s | --samples] \n"
+          "                              [-S | --step_size] <X-axis step-size> \n"
           "                              [-t | --time] \n"
+          "                              [-v | --verbose] \n"
           "                              [-x | --x_range] <Upper X-range of the plot> \n"
           "                              [-y | --y_axis_label] \n"
           )
@@ -269,25 +295,32 @@ def usage():
 def main(argv):
     behavior_folders = []
     reward_fn = np.arange(0, 5).tolist()
-    sample_threshold = 6 * 1e7
+    sample_threshold = None
     plot_dims = np.arange(0, 29).tolist()
     exclude_dims_list = []
     output_return = False
     baseline = True
     pca = True
     ica = True
+    multi_train = False
+    x_axis = 'Samples'
     x_upper = None
     x_axis_label = True
     y_axis_label = True
     legend = True
+    centered = False
+    verbose = False
+    first_trained = False
+    step_size = 400
 
     try:
-        opts, args = getopt.getopt(argv, "h bpintsoaygl:r:d:u:x:",
+        opts, args = getopt.getopt(argv, "h bpintsoaygcvmfl:r:d:u:x:S:",
                                    ["baseline", "pca", "ica", "iterations", "time",
                                     "samples", "output_return", "x_axis_label",
-                                    "y_axis_label", "legend", "location=",
+                                    "y_axis_label", "legend", "centered", "verbose",
+                                    "multi_train", "first_trained", "location=",
                                     "reward_fn=", "plot_dims=", "sample_threshold=",
-                                    "x_range="])
+                                    "x_range=", "step_size="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -354,6 +387,20 @@ def main(argv):
             x_axis = 'Wall_Time'
         elif opt in ("-s", "--samples"):
             x_axis = 'Samples'
+        elif opt in ("-c", "--centered"):
+            centered = True
+        elif opt in ("-m", "--multi_train"):
+            multi_train = True
+        elif opt in ("-f", "--first_trained"):
+            first_trained = True
+        elif opt in ("-v", "--verbose"):
+            verbose = True
+        elif opt in ("-S", "--step_size"):
+            step_size = int(arg)
+
+        if first_trained and not multi_train:
+            first_trained = False
+            print("Warning: 'first_trained' set to True while 'multi_train' is not!")
 
     training_folders = []
     # Extract training folders from multiple behavior folders
@@ -363,19 +410,21 @@ def main(argv):
     plot_title = behavior
 
     # Extract training info from each training folder
-    plot_dicts_list = extract_plot_info(training_folders)
+    plot_dicts_list = \
+        extract_plot_info(training_folders, step_size=step_size, verbose=verbose,
+                          multi_train=multi_train, first_trained=first_trained)
 
     # Select plot dicts and sort them
     sorted_plots_list = \
         select_and_sort_plots_dicts(plot_dicts_list, plot_dims, reward_fn,
-                                    baseline, pca, ica)
+                                    baseline, pca, ica, centered)
 
     # Print training output
     if output_return:
         output_returns(sorted_plots_list, sample_threshold)
 
-    plot_2D(sorted_plots_list, plot_title, x_upper, x_axis_label, y_axis_label,
-            legend)
+    plot_2D(sorted_plots_list, x_axis, plot_title, x_upper, x_axis_label,
+            sample_threshold, y_axis_label, legend)
 
     plt.show()
 
