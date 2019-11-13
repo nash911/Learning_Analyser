@@ -60,6 +60,10 @@ def extract_training_info(training_folders, behavior, baseline, pca, ica, eval,
     training_dict_list = []
     # Process each training folder
     for d in training_folders:
+        # Ignore sub-folders such as 'int_output' folder within a training folder
+        if 'int_output' in d:
+            continue
+
         training_dict = OrderedDict()
 
         # Extract training folder location, and get the original run-args-file
@@ -91,6 +95,7 @@ def extract_training_info(training_folders, behavior, baseline, pca, ica, eval,
         files = [f[2] for f in os.walk(d)]
         if 'pca_activation_euler' in d:
             dims = re.search('centered_(.*)d_', d)
+            #dims = re.search('centered_Run_(.*)d_', d)
             if dims is None:
                 dims = re.search('euler_(.*)d_', d)
             if dims is None:
@@ -137,16 +142,24 @@ def extract_training_info(training_folders, behavior, baseline, pca, ica, eval,
 
 def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
                     eval_duration, reduced_motion_file, imitate_exctn,
-                    log_excitations, log_actions, log_pose):
+                    intermediate_model, log_excitations, log_actions, log_pose):
     # Iterate through a list of trained-model folders dictionary
     for train_dict in sorted_training_list:
         # Create an args-parser object and load the args-file
         arg_parser = AnlyzArgParser()
         succ = arg_parser.load_file(train_dict['run_file'])
 
-        # Add trained model-file
-        arg_parser._table['--model_files'] = \
-            '--model_files ' + train_dict['location'] + '/agent0_model.ckpt'
+        if intermediate_model is not None:
+            # Add intermediate model file
+            int_itr = '0000000000' + str(intermediate_model)
+            int_model_file = "agent0_int_model_%s.ckpt" % int_itr[-10:]
+            arg_parser._table['--model_files'] = '--model_files ' + \
+                train_dict['location'] + '/int_output/agent0_models/' + \
+                int_model_file
+        else:
+            # Add trained model file
+            arg_parser._table['--model_files'] = \
+                '--model_files ' + train_dict['location'] + '/agent0_model.ckpt'
 
         # Add reduced-motion-file
         if train_dict['label'] == 'baseline':
@@ -221,20 +234,70 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
     return
 
 
+def run_playback(reduced_motion=None, single=False, dimension=None, behavior=None):
+    playback_dict = OrderedDict()
+    playback_dict['scene'] = "kin_char"
+    playback_dict['character_file'] = "data/characters/humanoid3d.txt"
+
+    if reduced_motion:
+        if dimension is None:
+            print("Error: For reduced-motion playback, specify dimension using "
+                  "flag: [-D | --dimension]")
+            sys.exit()
+
+        if single:
+            motion_file = "/home/nash/Dropbox/Clemson/Projects/quat_conversions/pca/"
+            playback_dict['motion_file'] = motion_file + ('pca_traj_single_%d.txt' % dimension)
+        else:
+            motion_file = "/home/nash/Dropbox/Clemson/Projects/quat_conversions/pca/"
+            playback_dict['motion_file'] = motion_file + ('pca_traj_%d.txt' % dimension)
+    else:
+        if behavior is None:
+            print("Error: For independent-joint-action motion-playback, specify "
+                  "the behavior: [-B | --behavior]")
+            sys.exit()
+
+        motion_file = "/home/nash/DeepMimic/data/motions/"
+        playback_dict['motion_file'] = motion_file + ('humanoid3d_%s.txt' % behavior)
+
+    if not os.path.exists(playback_dict['motion_file']):
+        print("Error: Incorrect motion file/path:", playback_dict['motion_file'])
+        sys.exit()
+    else:
+        # Write playback-file on to a file
+        playback_file = "/home/nash/Dropbox/Clemson/Projects/Learning_Analyser/playback_file.txt"
+        with open(playback_file, 'w') as fp:
+            for k, v in playback_dict.items():
+                #fp.write(v + '\n')
+                fp.write('--' + k + ' ' + v + '\n')
+
+        # Execute command to run the trained case
+        cmd = 'python DeepMimic.py --arg_file ' + playback_file
+        subprocess.call(cmd, shell=True)
+
+    return
+
+
 def usage():
     print("Usage: Evaluate.py [-a | --log_actions] <input to PD controller> \n"
           "                   [-b | --baseline] \n"
+          "                   [-B | --behavior] <behavior name (run/walk/...)> \n"
           "                   [-d | --duration] <evaluation duration> \n"
+          "                   [-D | --dimension] <reduced dimension> \n"
           "                   [-e | --eval]  \n"
           "                   [-f | --force_eval] \n"
           "                   [-h | --help] \n"
           "                   [-i | --imitate_excitations] \n"
+          "                   [-I | --intermediate_model] \n"
           "                   [-l | --location] <input folder location> \n"
           "                   [-m | --reduced_motion_file] <reduced motion file> \n"
           "                   [-n | --num_evals] <no. of evaluations> \n"
           "                   [-o | --log_pose] \n"
           "                   [-p | --pca] \n"
-          "                   [-r | --reward_fn] <evaluation reward function> \n"
+          "                   [-P | --playback] \n"
+          "                   [-r | --reward_fn] <evaluation reward function (0/1/2/...)> \n"
+          "                   [-R | --reduced] \n"
+          "                   [-s | --single] \n"
           "                   [-x | --log_excitations] <output of policy network> \n"
           )
 
@@ -257,13 +320,22 @@ def main(argv):
     eval_reward_fn = 0
     force_eval = False
     imitate_exctn = False
+    intermediate_model = None
+
+    playback = False
+    reduced_motion = False
+    single = False
+    dimension = None
+    behavior = None
 
     try:
-        opts, args = getopt.getopt(argv, "h abpiefxol:m:n:d:r:",
+        opts, args = getopt.getopt(argv, "h abpiefxoPRsl:m:n:d:r:I:D:B:",
                                    ["log_excitations", "baseline", "pca", "eval",
                                     "imitate_excitations", "force_eval", "log_actions",
-                                    "log_pose", "location=", "reduced_motion_file=",
-                                    "num_evals=", "duration=", "reward_fn="])
+                                    "log_pose", "playback", "reduced", "single",
+                                    "location=", "reduced_motion_file=", "num_evals=",
+                                    "duration=", "reward_fn=", "intermediate_model=",
+                                    "dimension=", "behavior="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -302,6 +374,23 @@ def main(argv):
             eval_duration = float(arg)
         elif opt in ("-m", "--reduced_motion_file"):
             reduced_motion_file = arg
+        elif opt in ("-I", "--intermediate_model"):
+            intermediate_model = int(arg)
+        elif opt in ("-P", "--playback"):
+            playback = True
+        elif opt in ("-R", "--reduced"):
+            reduced_motion = True
+        elif opt in ("-s", "--single"):
+            single = True
+        elif opt in ("-D", "--dimension"):
+            dimension = int(arg)
+        elif opt in ("-B", "--behavior"):
+            behavior = arg
+
+    if playback:
+        run_playback(reduced_motion=reduced_motion, single=single,
+                     dimension=dimension, behavior=behavior)
+        return
 
     if all:
         baseline = pca = ica = True
@@ -335,7 +424,7 @@ def main(argv):
     # Create an appropriate run-args-file for each trained case
     create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
                     eval_duration, reduced_motion_file, imitate_exctn,
-                    log_excitations, log_actions, log_pose)
+                    intermediate_model, log_excitations, log_actions, log_pose)
 
     # Evaluate each trailed case in the list
     for train_dict in sorted_training_list:
@@ -343,6 +432,10 @@ def main(argv):
         with open(run_file, 'w') as fp:
             for k, v in train_dict['run_file_parser']._table.items():
                 fp.write(v + '\n')
+
+        # Print Iteration if intermediate model
+        if intermediate_model is not None:
+            print("\nIteration:", intermediate_model)
 
         # Execute command to run the trained case
         cmd = 'python DeepMimic.py --arg_file ' + run_file
