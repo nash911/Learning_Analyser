@@ -1,6 +1,6 @@
-import sys, getopt
+import sys
+import getopt
 import numpy as np
-import json
 import os
 import re
 from collections import OrderedDict
@@ -12,6 +12,7 @@ from matplotlib import style
 
 style.use('seaborn')
 
+
 def extract_training_folders(behavior_folder, training_folders):
     sub_dirs = [d[0] for d in os.walk(behavior_folder)]
 
@@ -22,7 +23,6 @@ def extract_training_folders(behavior_folder, training_folders):
     behavior = behavior.replace('ning', '')
     behavior = behavior.replace('ing', '')
     behavior = behavior.capitalize()
-    plot_title = "Learning Curve - " + behavior
 
     for d in sub_dirs:
         if 'd_2d' in d:
@@ -52,12 +52,14 @@ def extract_training_folders(behavior_folder, training_folders):
             training_folders.append(d)
         elif 'ica_activation_euler' in d:
             training_folders.append(d)
+        elif 'pca' in d:
+            training_folders.append(d)
 
     return behavior, training_folders
 
 
-def extract_plot_info(training_folders, step_size = 400, verbose=False,
-                      multi_train=False, first_trained=False):
+def extract_plot_info(training_folders, step_size=400, verbose=False, multi_train=False,
+                      first_trained=False):
     plot_dicts_list_all = []
     plot_dicts_list_R0 = []
     plot_dicts_list_R1 = []
@@ -92,14 +94,17 @@ def extract_plot_info(training_folders, step_size = 400, verbose=False,
         else:
             learning_curve_data['centered'] = False
 
-        if 'pca_activation_euler' in d:
+        if 'pca_activation_euler' in d or 'pca' in d:
             learning_curve_data['type'] = 'PCA'
             dims = re.search('centered_(.*)d_', d)
             if dims is None:
                 dims = re.search('euler_(.*)d_', d)
             if dims is None:
                 dims = re.search('euler_(.*)d', d)
-            dims = int(dims.group(1))
+            try:
+                dims = int(dims.group(1))
+            except AttributeError:
+                dims = 0
             learning_curve_data['dims'] = dims
             learning_curve_data['label'] = str(dims) + 'D'
         elif 'baseline_axis_pei_fix' in d:
@@ -116,10 +121,9 @@ def extract_plot_info(training_folders, step_size = 400, verbose=False,
             learning_curve_data['label'] = str(dims) + 'D'
 
         if verbose:
-            if learning_curve_data['type'] in ['PCA','ICA']:
+            if learning_curve_data['type'] in ['PCA', 'ICA']:
                 learning_curve_data['label'] = \
-                    learning_curve_data['type'] + '-' + str(dims) + 'D'# + '-' + \
-                    #learning_curve_data['reward_type']
+                    learning_curve_data['type'] + '-' + str(dims) + 'D'
             else:
                 learning_curve_data['label'] = learning_curve_data['type'] + '-' \
                                                + learning_curve_data['reward_type']
@@ -127,7 +131,7 @@ def extract_plot_info(training_folders, step_size = 400, verbose=False,
         try:
             with open(d+'/agent0_log.txt') as f:
                 lines = f.read().splitlines()
-        except:
+        except IOError:
             continue
         del lines[0]
 
@@ -138,7 +142,7 @@ def extract_plot_info(training_folders, step_size = 400, verbose=False,
             try:
                 line_array = np.array(line.split()[0:5], dtype=np.float32)
                 line_array += iter_offset
-            except: # Encountered "Iterations...", which indicates a new training run
+            except ValueError:  # Encountered "Iterations...", which indicates a new training run
                 if multi_train:
                     if first_trained:
                         break
@@ -152,18 +156,17 @@ def extract_plot_info(training_folders, step_size = 400, verbose=False,
             if line_array[0] % step_size == 0:
                 learning_iterations.append(line_array)
 
-        learning_matrix =  np.array(learning_iterations)
+        learning_matrix = np.array(learning_iterations)
 
-        learning_curve_data['Iterations'] = np.array(learning_matrix[:,0:1],
-                                                     dtype=np.float32)
-        learning_curve_data['Wall_Time'] = np.array(learning_matrix[:,1:2],
-                                                    dtype=np.float32)
-        learning_curve_data['Samples'] = np.array(learning_matrix[:,2:3],
-                                                  dtype=np.float32)
-        learning_curve_data['Train_Return'] = np.array(learning_matrix[:,3:4],
+        learning_curve_data['Iterations'] = np.array(learning_matrix[:, 0:1], dtype=np.float32)
+        learning_curve_data['Wall_Time'] = np.array(learning_matrix[:, 1:2], dtype=np.float32)
+        learning_curve_data['Samples'] = np.array(learning_matrix[:, 2:3], dtype=np.float32)
+        learning_curve_data['Train_Return'] = np.array(learning_matrix[:, 3:4],
                                                        dtype=np.float32) / 600.0
-        learning_curve_data['Test_Return'] = np.array(learning_matrix[:,4:5],
+        learning_curve_data['Test_Return'] = np.array(learning_matrix[:, 4:5],
                                                       dtype=np.float32) / 600.0
+        learning_curve_data['Clip_Frac'] = np.array(learning_matrix[:, 16:17],
+                                                    dtype=np.float32)
 
         plot_dicts_list_all.append(learning_curve_data)
 
@@ -181,8 +184,8 @@ def extract_plot_info(training_folders, step_size = 400, verbose=False,
     return plot_dicts_list_all
 
 
-def select_and_sort_plots_dicts(plot_dicts_list, plot_dims, reward_fn, baseline,
-                                pca, ica, centered):
+def select_and_sort_plots_dicts(plot_dicts_list, plot_dims, reward_fn, baseline, pca, ica,
+                                centered):
     plots_list = []
     for i, plot in enumerate(plot_dicts_list):
         if plot['dims'] in plot_dims and plot['reward_no'] in reward_fn:
@@ -196,9 +199,7 @@ def select_and_sort_plots_dicts(plot_dicts_list, plot_dims, reward_fn, baseline,
             elif ica and plot['type'] == 'ICA':
                 plots_list.append(plot)
 
-    sorted_plots_list = \
-        sorted(plots_list, key = lambda i: (i['dims'], i['reward_no'], i['type']))
-
+    sorted_plots_list = sorted(plots_list, key=lambda i: (i['dims'], i['reward_no'], i['type']))
     return sorted_plots_list
 
 
@@ -208,31 +209,30 @@ def output_returns(sorted_plots_list, sample_threshold):
                                            plot['Train_Return'],
                                            plot['Test_Return']])
 
-        print("\n", (plot['label'] + '_' + plot['reward_type']) )
+        print("\n", (plot['label'] + '_' + plot['reward_type']))
         for i, lm in enumerate(learning_matrix):
             if lm[0] > sample_threshold:
                 learning_matrix = learning_matrix[0:i]
                 break
 
-        print("Max. Test_Return: ", np.max(learning_matrix[:,2]))
+        print("Max. Test_Return: ", np.max(learning_matrix[:, 2]))
     return
 
 
-def plot_2D(sorted_plots_list, x_axis, plot_title, x_upper, x_axis_label, x_lim,
-            y_axis_label, legend):
-    lc = ['xkcd:red', 'xkcd:blue', 'xkcd:green', 'xkcd:brown', 'xkcd:pink',
-          'xkcd:purple', 'xkcd:orange', 'xkcd:magenta', 'xkcd:tan', 'xkcd:black',
-          'xkcd:cyan', 'xkcd:gold', 'xkcd:dark green', 'xkcd:cream',
-          'xkcd:lavender', 'xkcd:turquoise', 'xkcd:dark blue', 'xkcd:violet',
-          'xkcd:beige', 'xkcd:salmon', 'xkcd:olive', 'xkcd:light brown',
-          'xkcd:hot pink', 'xkcd:dark red', 'xkcd:sand', 'xkcd:army green',
-          'xkcd:dark grey', 'xkcd:crimson', 'xkcd:eggplant', 'xkcd:coral']
+def plot_2D(sorted_plots_list, x_axis, plot_title, x_upper, x_axis_label, x_lim, y_axis_label,
+            legend, plot_key='Test_Return'):
+    lc = ['xkcd:red', 'xkcd:blue', 'xkcd:green', 'xkcd:brown', 'xkcd:pink', 'xkcd:purple',
+          'xkcd:orange', 'xkcd:magenta', 'xkcd:tan', 'xkcd:black', 'xkcd:cyan', 'xkcd:gold',
+          'xkcd:dark green', 'xkcd:cream', 'xkcd:lavender', 'xkcd:turquoise', 'xkcd:dark blue',
+          'xkcd:violet', 'xkcd:beige', 'xkcd:salmon', 'xkcd:olive', 'xkcd:light brown',
+          'xkcd:hot pink', 'xkcd:dark red', 'xkcd:sand', 'xkcd:army green', 'xkcd:dark grey',
+          'xkcd:crimson', 'xkcd:eggplant', 'xkcd:coral']
     ls = ['-', '--', '-.', ':']
     lw = 2.0
     fs = 20
     plt.rcParams.update({'font.size': 52})
-    plt.rcParams['xtick.labelsize']=20
-    plt.rcParams['ytick.labelsize']=20
+    plt.rcParams['xtick.labelsize'] = 20
+    plt.rcParams['ytick.labelsize'] = 20
 
     fig = plt.figure()
     fig.suptitle(plot_title, fontsize=22)
@@ -240,8 +240,8 @@ def plot_2D(sorted_plots_list, x_axis, plot_title, x_upper, x_axis_label, x_lim,
 
     for i, plot in enumerate(sorted_plots_list):
         lab = plot['label']
-        ax.plot(plot[x_axis], plot['Test_Return'], linestyle=ls[i%4],
-                linewidth=lw, color=lc[i%30], label=lab)
+        ax.plot(plot[x_axis], plot[plot_key], linestyle=ls[i % 4], linewidth=lw, color=lc[i % 30],
+                label=lab)
 
     if x_axis_label:
         ax.set_xlabel(x_axis, fontsize=fs)
@@ -258,11 +258,9 @@ def plot_2D(sorted_plots_list, x_axis, plot_title, x_upper, x_axis_label, x_lim,
     ax.set_facecolor('xkcd:white')
     if legend:
         box = ax.get_position()
-        ax.set_position([box.x0, box.y0 + box.height * 0.15, box.width,
-                         box.height * 0.9])
-
-        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.17), fancybox=True,
-                  shadow=True, ncol=4, prop={'size': 15})
+        ax.set_position([box.x0, box.y0 + box.height * 0.15, box.width, box.height * 0.9])
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.17), fancybox=True, shadow=True,
+                  ncol=4, prop={'size': 15})
     return
 
 
@@ -270,6 +268,7 @@ def usage():
     print("Usage: learning_curve_plot.py [-a | --x_axis_label] \n"
           "                              [-b | --baseline] \n"
           "                              [-c | --centered] \n"
+          "                              [-C | --clip_frac] \n"
           "                              "
           "[-d | --dims_list] <list of reward fn: pos-values (include), neg-values (exclude)> \n"
           "                              [-f | --first_trained] \n"
@@ -297,13 +296,13 @@ def main(argv):
     reward_fn = np.arange(0, 5).tolist()
     sample_threshold = None
     plot_dims = np.arange(0, 29).tolist()
-    exclude_dims_list = []
     output_return = False
     baseline = True
     pca = True
     ica = True
     multi_train = False
     x_axis = 'Samples'
+    plot_key = 'Test_Return'
     x_upper = None
     x_axis_label = True
     y_axis_label = True
@@ -314,13 +313,12 @@ def main(argv):
     step_size = 400
 
     try:
-        opts, args = getopt.getopt(argv, "h bpintsoaygcvmfl:r:d:u:x:S:",
-                                   ["baseline", "pca", "ica", "iterations", "time",
-                                    "samples", "output_return", "x_axis_label",
-                                    "y_axis_label", "legend", "centered", "verbose",
-                                    "multi_train", "first_trained", "location=",
-                                    "reward_fn=", "plot_dims=", "sample_threshold=",
-                                    "x_range=", "step_size="])
+        opts, args = getopt.getopt(argv, "h bpintsoaygcvmfCl:r:d:u:x:S:",
+                                   ["baseline", "pca", "ica", "iterations", "time", "samples",
+                                    "output_return", "x_axis_label", "y_axis_label", "legend",
+                                    "centered", "verbose", "multi_train", "first_trained",
+                                    "clip_frac", "location=", "reward_fn=", "plot_dims=",
+                                    "sample_threshold=", "x_range=", "step_size="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -337,10 +335,9 @@ def main(argv):
             neg = max(reward_fn_list) < 0
 
             if not pos and not neg:
-                print("ERROR: 'r'/'--reward_fn': ", dims_list, " contains both ",
-                       "positive and negative values. \nCan either be a list ",
-                       "of positive reward fn. values (indicating inclusion) ",
-                       "or negative reward fn. values (indicating exclusion).")
+                print("ERROR: 'r'/'--reward_fn': ", reward_fn_list, " contains both positive and ",
+                      "negative values. \nCan either be a list of positive reward fn. values ",
+                      "(indicating inclusion) or negative reward fn. values (indicating exclusion)")
                 sys.exit()
             elif neg:
                 for r in reward_fn_list:
@@ -353,10 +350,9 @@ def main(argv):
             neg = max(dims_list) < 0
 
             if not pos and not neg:
-                print("ERROR: 'd'/'--dims_list': ", dims_list, " contains both ",
-                       "positive and negative values. \nCan either be a list ",
-                       "of positive dimensions values (indicating inclusion) ",
-                       "or negative dimension values (indicating exclusion).")
+                print("ERROR: 'd'/'--dims_list': ", dims_list, " contains both positive and",
+                      "negative values. \nCan either be a list of positive dimensions values",
+                      "(indicating inclusion) or negative dimension values (indicating exclusion).")
                 sys.exit()
             elif neg:
                 for d in dims_list:
@@ -387,6 +383,8 @@ def main(argv):
             x_axis = 'Wall_Time'
         elif opt in ("-s", "--samples"):
             x_axis = 'Samples'
+        elif opt in ("-C", "--clip_frac"):
+            plot_key = 'Clip_Frac'
         elif opt in ("-c", "--centered"):
             centered = True
         elif opt in ("-m", "--multi_train"):
@@ -403,10 +401,9 @@ def main(argv):
             print("Warning: 'first_trained' set to True while 'multi_train' is not!")
 
     training_folders = []
-    # Extract training folders from multiple behavior folders
+    # Extract training folders from multiply behavior folders
     for behavior_folder in behavior_folders:
-        behavior, training_folders = \
-            extract_training_folders(behavior_folder, training_folders)
+        behavior, training_folders = extract_training_folders(behavior_folder, training_folders)
     plot_title = behavior
 
     # Extract training info from each training folder
@@ -415,16 +412,15 @@ def main(argv):
                           multi_train=multi_train, first_trained=first_trained)
 
     # Select plot dicts and sort them
-    sorted_plots_list = \
-        select_and_sort_plots_dicts(plot_dicts_list, plot_dims, reward_fn,
-                                    baseline, pca, ica, centered)
+    sorted_plots_list = select_and_sort_plots_dicts(plot_dicts_list, plot_dims, reward_fn, baseline,
+                                                    pca, ica, centered)
 
     # Print training output
     if output_return:
         output_returns(sorted_plots_list, sample_threshold)
 
-    plot_2D(sorted_plots_list, x_axis, plot_title, x_upper, x_axis_label,
-            sample_threshold, y_axis_label, legend)
+    plot_2D(sorted_plots_list, x_axis, plot_title, x_upper, x_axis_label, sample_threshold,
+            y_axis_label, legend, plot_key)
 
     plt.show()
 

@@ -1,6 +1,6 @@
-import sys, getopt
+import sys
+import getopt
 import numpy as np
-import json
 import os
 import re
 from collections import OrderedDict
@@ -10,10 +10,13 @@ from analysis_arg_parser import AnlyzArgParser
 
 run_args_dict = OrderedDict()
 run_args_dict['backflip'] = '/home/nash/DeepMimic/args/run_humanoid3d_backflip_args.txt'
+run_args_dict['cartwheel'] = '/home/nash/DeepMimic/args/run_humanoid3d_cartwheel_args.txt'
 run_args_dict['crawling'] = '/home/nash/DeepMimic/args/run_humanoid3d_crawl_args.txt'
 run_args_dict['dance_a'] = '/home/nash/DeepMimic/args/run_humanoid3d_dance_a_args.txt'
+run_args_dict['punch'] = '/home/nash/DeepMimic/args/run_humanoid3d_punch_args.txt'
 run_args_dict['running'] = '/home/nash/DeepMimic/args/run_humanoid3d_run_args.txt'
 run_args_dict['walking'] = '/home/nash/DeepMimic/args/run_humanoid3d_walk_args.txt'
+
 
 def extract_training_folders(behavior_folder, training_folders):
     sub_dirs = [d[0] for d in os.walk(behavior_folder)]
@@ -24,7 +27,7 @@ def extract_training_folders(behavior_folder, training_folders):
     behavior = behavior.split('/', 1)[0]
 
     for d in sub_dirs:
-        if 'd_2' in d:
+        if 'd_2' in d and not ('centered_' in d):
             continue
         elif 'mixed_motions' in d:
             continue
@@ -50,6 +53,8 @@ def extract_training_folders(behavior_folder, training_folders):
         elif 'pca_activation_euler' in d:
             training_folders.append(d)
         elif 'ica_activation_euler' in d:
+            training_folders.append(d)
+        elif 'pca' in d:
             training_folders.append(d)
 
     return behavior, training_folders
@@ -93,14 +98,17 @@ def extract_training_info(training_folders, behavior, baseline, pca, ica, eval,
 
         # Extract dims,type and reduced_motion_file of the training case
         files = [f[2] for f in os.walk(d)]
-        if 'pca_activation_euler' in d:
+        if 'pca_activation_euler' in d or 'pca' in d:
             dims = re.search('centered_(.*)d_', d)
-            #dims = re.search('centered_Run_(.*)d_', d)
+            # dims = re.search('centered_Run_(.*)d_', d)
             if dims is None:
                 dims = re.search('euler_(.*)d_', d)
             if dims is None:
                 dims = re.search('euler_(.*)d', d)
-            dims = int(dims.group(1))
+            try:
+                dims = int(dims.group(1))
+            except AttributeError:
+                dims = 0
             training_dict['dims'] = dims
             training_dict['label'] = 'pca'
             for f in files[0]:
@@ -142,12 +150,13 @@ def extract_training_info(training_folders, behavior, baseline, pca, ica, eval,
 
 def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
                     eval_duration, reduced_motion_file, imitate_exctn,
-                    intermediate_model, log_excitations, log_actions, log_pose):
+                    intermediate_model, log_excitations, log_actions, log_pose,
+                    select_k=None):
     # Iterate through a list of trained-model folders dictionary
     for train_dict in sorted_training_list:
         # Create an args-parser object and load the args-file
         arg_parser = AnlyzArgParser()
-        succ = arg_parser.load_file(train_dict['run_file'])
+        arg_parser.load_file(train_dict['run_file'])
 
         if intermediate_model is not None:
             # Add intermediate model file
@@ -165,7 +174,7 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
         if train_dict['label'] == 'baseline':
             try:
                 del arg_parser._table['--reduced_motion_file']
-            except:
+            except KeyError:
                 pass
         else:
             if reduced_motion_file is None:
@@ -175,6 +184,10 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
             else:
                 arg_parser._table['--reduced_motion_file'] = \
                     '--reduced_motion_file ' + reduced_motion_file
+
+        # Add select_k arg
+        if select_k is not None:
+            arg_parser._table['--select_k'] = '--select_k ' + str(select_k)
 
         # Add args related to evaluation
         if eval:
@@ -188,7 +201,7 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
         else:
             try:
                 del arg_parser._table['--evaluate']
-            except:
+            except KeyError:
                 pass
 
         # Add 'imitate_excitation' argument
@@ -198,7 +211,7 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
         else:
             try:
                 del arg_parser._table['--imitate_excitation']
-            except:
+            except KeyError:
                 pass
 
         # Add 'log_excitations' argument
@@ -207,7 +220,7 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
         else:
             try:
                 del arg_parser._table['--log_excitations']
-            except:
+            except KeyError:
                 pass
 
         # Add 'log_actions' argument
@@ -216,7 +229,7 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
         else:
             try:
                 del arg_parser._table['--log_actions']
-            except:
+            except KeyError:
                 pass
 
         # Add 'log_pose' argument
@@ -225,7 +238,7 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
         else:
             try:
                 del arg_parser._table['--log_pose']
-            except:
+            except KeyError:
                 pass
 
         # Add run-args-file to training dictionary
@@ -246,10 +259,10 @@ def run_playback(reduced_motion=None, single=False, dimension=None, behavior=Non
             sys.exit()
 
         if single:
-            motion_file = "/home/nash/Dropbox/Clemson/Projects/quat_conversions/pca/"
+            motion_file = "/home/nash/Dropbox/Clemson/Projects/quat_conversions/pca/Output/"
             playback_dict['motion_file'] = motion_file + ('pca_traj_single_%d.txt' % dimension)
         else:
-            motion_file = "/home/nash/Dropbox/Clemson/Projects/quat_conversions/pca/"
+            motion_file = "/home/nash/Dropbox/Clemson/Projects/quat_conversions/pca/Output/"
             playback_dict['motion_file'] = motion_file + ('pca_traj_%d.txt' % dimension)
     else:
         if behavior is None:
@@ -268,7 +281,6 @@ def run_playback(reduced_motion=None, single=False, dimension=None, behavior=Non
         playback_file = "/home/nash/Dropbox/Clemson/Projects/Learning_Analyser/playback_file.txt"
         with open(playback_file, 'w') as fp:
             for k, v in playback_dict.items():
-                #fp.write(v + '\n')
                 fp.write('--' + k + ' ' + v + '\n')
 
         # Execute command to run the trained case
@@ -288,6 +300,7 @@ def usage():
           "                   [-f | --force_eval] \n"
           "                   [-h | --help] \n"
           "                   [-i | --imitate_excitations] \n"
+          "                   [-k | --select_k] \n"
           "                   [-I | --intermediate_model] \n"
           "                   [-l | --location] <input folder location> \n"
           "                   [-m | --reduced_motion_file] <reduced motion file> \n"
@@ -321,6 +334,7 @@ def main(argv):
     force_eval = False
     imitate_exctn = False
     intermediate_model = None
+    select_k = None
 
     playback = False
     reduced_motion = False
@@ -329,13 +343,13 @@ def main(argv):
     behavior = None
 
     try:
-        opts, args = getopt.getopt(argv, "h abpiefxoPRsl:m:n:d:r:I:D:B:",
+        opts, args = getopt.getopt(argv, "h abpiefxoPRsl:m:n:d:r:I:D:B:k:",
                                    ["log_excitations", "baseline", "pca", "eval",
                                     "imitate_excitations", "force_eval", "log_actions",
                                     "log_pose", "playback", "reduced", "single",
                                     "location=", "reduced_motion_file=", "num_evals=",
                                     "duration=", "reward_fn=", "intermediate_model=",
-                                    "dimension=", "behavior="])
+                                    "dimension=", "behavior=", "select_k="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -386,6 +400,8 @@ def main(argv):
             dimension = int(arg)
         elif opt in ("-B", "--behavior"):
             behavior = arg
+        elif opt in ("-k", "--select_k"):
+            select_k = int(arg)
 
     if playback:
         run_playback(reduced_motion=reduced_motion, single=single,
@@ -416,15 +432,13 @@ def main(argv):
 
     # Sort training dictionaries
     sorted_training_list = \
-        sorted(training_dict_list, key = lambda i: (i['dims'], i['reward_no'],
-                                                    i['label']))
-
-    #[print(d['location']) for d in sorted_training_list]
+        sorted(training_dict_list, key=lambda i: (i['dims'], i['reward_no'], i['label']))
 
     # Create an appropriate run-args-file for each trained case
     create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
                     eval_duration, reduced_motion_file, imitate_exctn,
-                    intermediate_model, log_excitations, log_actions, log_pose)
+                    intermediate_model, log_excitations, log_actions, log_pose,
+                    select_k)
 
     # Evaluate each trailed case in the list
     for train_dict in sorted_training_list:
