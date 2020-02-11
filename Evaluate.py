@@ -60,8 +60,8 @@ def extract_training_folders(behavior_folder, training_folders):
     return behavior, training_folders
 
 
-def extract_training_info(training_folders, behavior, baseline, pca, ica, eval,
-                          num_evals, eval_duration, eval_reward_fn, force_eval):
+def extract_training_info(training_folders, behavior, baseline, pca, ica, eval, num_evals,
+                          eval_duration, eval_reward_fn, force_eval):
     training_dict_list = []
     # Process each training folder
     for d in training_folders:
@@ -77,9 +77,8 @@ def extract_training_info(training_folders, behavior, baseline, pca, ica, eval,
 
         # If 'eval' arg is set, then check if a previous evaluation file exists
         if eval:
-            eval_file = training_dict['location'] + '/evaluation' + '_R' \
-                        + str(eval_reward_fn) + '_' + str(num_evals) + '_' \
-                        + str(eval_duration)
+            eval_file = training_dict['location'] + '/evaluation' + '_R' + str(eval_reward_fn) \
+                        + '_' + str(num_evals) + '_' + str(eval_duration)
 
             # If so, and NOT 'force_eval', then exclude the current folder from evaluation
             if os.path.isfile(eval_file) and not force_eval:
@@ -148,10 +147,9 @@ def extract_training_info(training_folders, behavior, baseline, pca, ica, eval,
     return training_dict_list
 
 
-def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
-                    eval_duration, reduced_motion_file, imitate_exctn,
-                    intermediate_model, log_excitations, log_actions, log_pose,
-                    select_k=None):
+def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_duration,
+                    reduced_motion_file, imitate_exctn, intermediate_model, log_excitations,
+                    log_actions, log_pose, select_k=None):
     # Iterate through a list of trained-model folders dictionary
     for train_dict in sorted_training_list:
         # Create an args-parser object and load the args-file
@@ -162,9 +160,8 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
             # Add intermediate model file
             int_itr = '0000000000' + str(intermediate_model)
             int_model_file = "agent0_int_model_%s.ckpt" % int_itr[-10:]
-            arg_parser._table['--model_files'] = '--model_files ' + \
-                train_dict['location'] + '/int_output/agent0_models/' + \
-                int_model_file
+            arg_parser._table['--model_files'] = '--model_files ' + train_dict['location'] \
+                + '/int_output/agent0_models/' + int_model_file
         else:
             # Add trained model file
             arg_parser._table['--model_files'] = \
@@ -179,8 +176,7 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
         else:
             if reduced_motion_file is None:
                 arg_parser._table['--reduced_motion_file'] = \
-                    '--reduced_motion_file ' + train_dict['location'] + '/' + \
-                    train_dict['red_file']
+                    '--reduced_motion_file ' + train_dict['location'] + '/' + train_dict['red_file']
             else:
                 arg_parser._table['--reduced_motion_file'] = \
                     '--reduced_motion_file ' + reduced_motion_file
@@ -191,9 +187,8 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
 
         # Add args related to evaluation
         if eval:
-            eval_file = train_dict['location'] + '/evaluation' + '_R' \
-                        + str(eval_reward_fn) + '_' + str(num_evals) + '_' \
-                        + str(eval_duration)
+            eval_file = train_dict['location'] + '/evaluation' + '_R' + str(eval_reward_fn) + '_' \
+                        + str(num_evals) + '_' + str(eval_duration)
             arg_parser._table['--evaluate'] = '--evaluate ' + 'True'
             arg_parser._table['--num_evals'] = '--num_evals ' + str(num_evals)
             arg_parser._table['--evaluation_time'] = '--evaluation_time ' + str(eval_duration)
@@ -206,8 +201,7 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
 
         # Add 'imitate_excitation' argument
         if imitate_exctn:
-            arg_parser._table['--imitate_excitation'] = \
-                '--imitate_excitation ' + 'True'
+            arg_parser._table['--imitate_excitation'] = '--imitate_excitation ' + 'True'
         else:
             try:
                 del arg_parser._table['--imitate_excitation']
@@ -254,8 +248,8 @@ def run_playback(reduced_motion=None, single=False, dimension=None, behavior=Non
 
     if reduced_motion:
         if dimension is None:
-            print("Error: For reduced-motion playback, specify dimension using "
-                  "flag: [-D | --dimension]")
+            print("Error: For reduced-motion playback, specify dimension using flag: "
+                  "[-D | --dimension]")
             sys.exit()
 
         if single:
@@ -266,8 +260,8 @@ def run_playback(reduced_motion=None, single=False, dimension=None, behavior=Non
             playback_dict['motion_file'] = motion_file + ('pca_traj_%d.txt' % dimension)
     else:
         if behavior is None:
-            print("Error: For independent-joint-action motion-playback, specify "
-                  "the behavior: [-B | --behavior]")
+            print("Error: For independent-joint-action motion-playback, specify the behavior: "
+                  "[-B | --behavior]")
             sys.exit()
 
         motion_file = "/home/nash/DeepMimic/data/motions/"
@@ -345,11 +339,10 @@ def main(argv):
     try:
         opts, args = getopt.getopt(argv, "h abpiefxoPRsl:m:n:d:r:I:D:B:k:",
                                    ["log_excitations", "baseline", "pca", "eval",
-                                    "imitate_excitations", "force_eval", "log_actions",
-                                    "log_pose", "playback", "reduced", "single",
-                                    "location=", "reduced_motion_file=", "num_evals=",
-                                    "duration=", "reward_fn=", "intermediate_model=",
-                                    "dimension=", "behavior=", "select_k="])
+                                    "imitate_excitations", "force_eval", "log_actions", "log_pose",
+                                    "playback", "reduced", "single", "location=",
+                                    "reduced_motion_file=", "num_evals=", "duration=", "reward_fn=",
+                                    "intermediate_model=", "dimension=", "behavior=", "select_k="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -381,7 +374,7 @@ def main(argv):
         elif opt in ("-t", "--behavior"):
             behavior = arg
         elif opt in ("-r", "--reward_fn"):
-            reward_fn = int(arg)
+            eval_reward_fn = int(arg)
         elif opt in ("-n", "--num_evals"):
             num_evals = int(arg)
         elif opt in ("-d", "--duration"):
@@ -404,8 +397,8 @@ def main(argv):
             select_k = int(arg)
 
     if playback:
-        run_playback(reduced_motion=reduced_motion, single=single,
-                     dimension=dimension, behavior=behavior)
+        run_playback(reduced_motion=reduced_motion, single=single, dimension=dimension,
+                     behavior=behavior)
         return
 
     if all:
@@ -426,19 +419,17 @@ def main(argv):
 
     # Extract info from individual training folders
     training_dict_list = \
-        extract_training_info(training_folders, behavior, baseline, pca, ica,
-                              eval, num_evals, eval_duration, eval_reward_fn,
-                              force_eval)
+        extract_training_info(training_folders, behavior, baseline, pca, ica, eval, num_evals,
+                              eval_duration, eval_reward_fn, force_eval)
 
     # Sort training dictionaries
     sorted_training_list = \
         sorted(training_dict_list, key=lambda i: (i['dims'], i['reward_no'], i['label']))
 
     # Create an appropriate run-args-file for each trained case
-    create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals,
-                    eval_duration, reduced_motion_file, imitate_exctn,
-                    intermediate_model, log_excitations, log_actions, log_pose,
-                    select_k)
+    create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_duration,
+                    reduced_motion_file, imitate_exctn, intermediate_model, log_excitations,
+                    log_actions, log_pose, select_k)
 
     # Evaluate each trailed case in the list
     for train_dict in sorted_training_list:
