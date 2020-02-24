@@ -46,7 +46,7 @@ def extract_training_folders(behavior_folder, training_folders):
         elif 'Older' in d:
             continue
 
-        if 'baseline_axis_pei_fix' in d:
+        if 'baseline' in d:
             training_folders.append(d)
         elif 'pca_activation_euler' in d:
             training_folders.append(d)
@@ -107,7 +107,7 @@ def extract_plot_info(training_folders, step_size=400, verbose=False, multi_trai
                 dims = 0
             learning_curve_data['dims'] = dims
             learning_curve_data['label'] = str(dims) + 'D'
-        elif 'baseline_axis_pei_fix' in d:
+        if 'baseline' in d:
             learning_curve_data['type'] = 'Baseline'
             learning_curve_data['dims'] = 0
             learning_curve_data['label'] = 'Baseline'

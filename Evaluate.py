@@ -17,13 +17,22 @@ run_args_dict['punch'] = '/home/nash/DeepMimic/args/run_humanoid3d_punch_args.tx
 run_args_dict['running'] = '/home/nash/DeepMimic/args/run_humanoid3d_run_args.txt'
 run_args_dict['walking'] = '/home/nash/DeepMimic/args/run_humanoid3d_walk_args.txt'
 
+run_args_dict['walk'] = '/home/nash/DeepMimic/args/run_salamander_walk_args.txt'
+
 
 def extract_training_folders(behavior_folder, training_folders):
     sub_dirs = [d[0] for d in os.walk(behavior_folder)]
 
     # Extract behavior name from the path string
-    behavior = behavior_folder[behavior_folder.find('humanoid3d'):]
-    behavior = behavior.replace("humanoid3d/", "")
+    if 'humanoid' in behavior_folder:
+        behavior = behavior_folder[behavior_folder.find('humanoid3d'):]
+        behavior = behavior.replace("humanoid3d/", "")
+    elif 'salamander' in behavior_folder:
+        behavior = behavior_folder[behavior_folder.find('salamander'):]
+        behavior = behavior.replace("salamander/", "")
+    else:
+        print("Error: Either missing or unknown character in folder path: ", behavior_folder)
+        sys.exit()
     behavior = behavior.split('/', 1)[0]
 
     for d in sub_dirs:
@@ -48,7 +57,7 @@ def extract_training_folders(behavior_folder, training_folders):
         elif 'Older' in d:
             continue
 
-        if 'baseline_axis_pei_fix' in d:
+        if 'baseline' in d:
             training_folders.append(d)
         elif 'pca_activation_euler' in d:
             training_folders.append(d)
@@ -121,7 +130,7 @@ def extract_training_info(training_folders, behavior, baseline, pca, ica, eval, 
                 # if 'pca_quat_humanoid3d' in f:
                 #     training_dict['red_file'] = f
                 #     break
-        elif 'baseline_axis_pei_fix' in d:
+        elif 'baseline' in d:
             training_dict['dims'] = 0
             training_dict['label'] = 'baseline'
             training_dict['red_file'] = None
