@@ -515,7 +515,7 @@ def main(argv):
         try:
             with open(motion_reference_file) as mf:
                 motion_data = json.load(mf)
-        except IOError:
+        except TypeError:
             motion_data = None
 
         # Extract resolution and cycle-duration from reference file
