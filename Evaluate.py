@@ -158,7 +158,8 @@ def extract_training_info(training_folders, behavior, baseline, pca, ica, eval, 
 
 def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_duration,
                     reduced_motion_file, imitate_exctn, intermediate_model, log_excitations,
-                    log_actions, log_pose, select_k=None):
+                    log_actions, log_pose, select_k=None, com_threshold=-1.0, check_collision=False,
+                    allow_parent_collision=False):
     # Iterate through a list of trained-model folders dictionary
     for train_dict in sorted_training_list:
         # Create an args-parser object and load the args-file
@@ -193,6 +194,19 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_
         # Add select_k arg
         if select_k is not None:
             arg_parser._table['--select_k'] = '--select_k ' + str(select_k)
+
+        # Add com_height_threshold arg
+        if com_threshold > 0.0:
+            arg_parser._table['--com_height_threshold'] = '--com_height_threshold ' + \
+                str(com_threshold)
+
+        # Add check_collision arg
+        if check_collision:
+            arg_parser._table['--enable_collision_check'] = '--enable_collision_check ' + 'True'
+
+        # Add parent_collision arg
+        if allow_parent_collision:
+            arg_parser._table['--allow_parent_collision'] = '--allow_parent_collision ' + 'True'
 
         # Add args related to evaluation
         if eval:
@@ -237,7 +251,7 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_
 
         # Add 'log_pose' argument
         if log_pose:
-            arg_parser._table['--log_pose'] = '--log_pose ' + 'True'
+            arg_parser._table['--log_pose'] = '--log_pose ' + 'true'
         else:
             try:
                 del arg_parser._table['--log_pose']
@@ -297,6 +311,8 @@ def usage():
     print("Usage: Evaluate.py [-a | --log_actions] <input to PD controller> \n"
           "                   [-b | --baseline] \n"
           "                   [-B | --behavior] <behavior name (run/walk/...)> \n"
+          "                   [-c | --check_collision]  \n"
+          "                   [-C | --allow_parent_collision]  \n"
           "                   [-d | --duration] <evaluation duration> \n"
           "                   [-D | --dimension] <reduced dimension> \n"
           "                   [-e | --eval]  \n"
@@ -306,6 +322,7 @@ def usage():
           "                   [-k | --select_k] \n"
           "                   [-I | --intermediate_model] \n"
           "                   [-l | --location] <input folder location> \n"
+          "                   [-L | --low_com] <COM height threshold> \n"
           "                   [-m | --reduced_motion_file] <reduced motion file> \n"
           "                   [-n | --num_evals] <no. of evaluations> \n"
           "                   [-o | --log_pose] \n"
@@ -338,6 +355,9 @@ def main(argv):
     imitate_exctn = False
     intermediate_model = None
     select_k = None
+    check_collision = False
+    allow_parent_collision = False
+    com_threshold = -1.0
 
     playback = False
     reduced_motion = False
@@ -346,12 +366,13 @@ def main(argv):
     behavior = None
 
     try:
-        opts, args = getopt.getopt(argv, "h abpiefxoPRsl:m:n:d:r:I:D:B:k:",
+        opts, args = getopt.getopt(argv, "h abpiefxoPRsCcl:m:n:d:r:I:D:B:k:L:",
                                    ["log_excitations", "baseline", "pca", "eval",
                                     "imitate_excitations", "force_eval", "log_actions", "log_pose",
-                                    "playback", "reduced", "single", "location=",
-                                    "reduced_motion_file=", "num_evals=", "duration=", "reward_fn=",
-                                    "intermediate_model=", "dimension=", "behavior=", "select_k="])
+                                    "playback", "reduced", "single", "allow_parent_collision",
+                                    "check_collision", "location=", "reduced_motion_file=",
+                                    "num_evals=", "duration=", "reward_fn=", "intermediate_model=",
+                                    "dimension=", "behavior=", "select_k=", "low_com="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -404,6 +425,12 @@ def main(argv):
             behavior = arg
         elif opt in ("-k", "--select_k"):
             select_k = int(arg)
+        elif opt in ("-L", "--low_com"):
+            com_threshold = float(arg)
+        elif opt in ("-c", "--check_collision"):
+            check_collision = True
+        elif opt in ("-C", "--allow_parent_collision"):
+            allow_parent_collision = True
 
     if playback:
         run_playback(reduced_motion=reduced_motion, single=single, dimension=dimension,
@@ -438,7 +465,8 @@ def main(argv):
     # Create an appropriate run-args-file for each trained case
     create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_duration,
                     reduced_motion_file, imitate_exctn, intermediate_model, log_excitations,
-                    log_actions, log_pose, select_k)
+                    log_actions, log_pose, select_k, com_threshold, check_collision,
+                    allow_parent_collision)
 
     # Evaluate each trailed case in the list
     for train_dict in sorted_training_list:
