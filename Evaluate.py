@@ -19,6 +19,8 @@ run_args_dict['walking'] = '/home/nash/DeepMimic/args/run_humanoid3d_walk_args.t
 
 run_args_dict['walk'] = '/home/nash/DeepMimic/args/run_salamander_walk_args.txt'
 
+run_args_dict['run'] = '/home/nash/DeepMimic/args/run_cheetah_args.txt'
+
 
 def extract_training_folders(behavior_folder, training_folders):
     sub_dirs = [d[0] for d in os.walk(behavior_folder)]
@@ -30,6 +32,9 @@ def extract_training_folders(behavior_folder, training_folders):
     elif 'salamander' in behavior_folder:
         behavior = behavior_folder[behavior_folder.find('salamander'):]
         behavior = behavior.replace("salamander/", "")
+    elif 'cheetah' in behavior_folder:
+        behavior = behavior_folder[behavior_folder.find('cheetah'):]
+        behavior = behavior.replace("cheetah/", "")
     else:
         print("Error: Either missing or unknown character in folder path: ", behavior_folder)
         sys.exit()
