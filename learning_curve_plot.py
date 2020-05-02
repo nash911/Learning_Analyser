@@ -16,6 +16,19 @@ style.use('seaborn')
 def extract_training_folders(behavior_folder, training_folders):
     sub_dirs = [d[0] for d in os.walk(behavior_folder)]
 
+    # if 'humanoid' in behavior_folder:
+    #     behavior = behavior_folder[behavior_folder.find('humanoid3d'):]
+    #     behavior = behavior.replace("humanoid3d/", "")
+    # elif 'salamander' in behavior_folder:
+    #     behavior = behavior_folder[behavior_folder.find('salamander'):]
+    #     behavior = behavior.replace("salamander/", "")
+    # elif 'cheetah' in behavior_folder:
+    #     behavior = behavior_folder[behavior_folder.find('cheetah'):]
+    #     behavior = behavior.replace("cheetah/", "")
+    # else:
+    #     print("Error: Either missing or unknown character in folder path: ", behavior_folder)
+    #     sys.exit()
+
     behavior = behavior_folder[behavior_folder.find('humanoid3d'):]
     behavior = behavior.replace("humanoid3d/", "")
     behavior = behavior.split('/', 1)[0]
@@ -58,8 +71,8 @@ def extract_training_folders(behavior_folder, training_folders):
     return behavior, training_folders
 
 
-def extract_plot_info(training_folders, step_size=400, verbose=False, multi_train=False,
-                      first_trained=False):
+def extract_plot_info(training_folders, step_size=400, labels=None, verbose=False,
+                      multi_train=False, first_trained=False):
     plot_dicts_list_all = []
     plot_dicts_list_R0 = []
     plot_dicts_list_R1 = []
@@ -67,7 +80,7 @@ def extract_plot_info(training_folders, step_size=400, verbose=False, multi_trai
     plot_dicts_list_R_g = []
     plot_dicts_list_R_e = []
 
-    for d in training_folders:
+    for i, d in enumerate(training_folders):
         learning_curve_data = OrderedDict()
 
         if 'R0' in d:
@@ -165,8 +178,10 @@ def extract_plot_info(training_folders, step_size=400, verbose=False, multi_trai
                                                        dtype=np.float32) / 600.0
         learning_curve_data['Test_Return'] = np.array(learning_matrix[:, 4:5],
                                                       dtype=np.float32) / 600.0
-        learning_curve_data['Clip_Frac'] = np.array(learning_matrix[:, 16:17],
-                                                    dtype=np.float32)
+        learning_curve_data['Clip_Frac'] = np.array(learning_matrix[:, 16:17], dtype=np.float32)
+
+        if labels is not None:
+            learning_curve_data['label'] = labels[i]
 
         plot_dicts_list_all.append(learning_curve_data)
 
@@ -220,7 +235,7 @@ def output_returns(sorted_plots_list, sample_threshold):
 
 
 def plot_2D(sorted_plots_list, x_axis, plot_title, x_upper, x_axis_label, x_lim, y_axis_label,
-            legend, plot_key='Test_Return'):
+            norm_y_axis, legend, plot_key='Test_Return'):
     lc = ['xkcd:red', 'xkcd:blue', 'xkcd:green', 'xkcd:brown', 'xkcd:pink', 'xkcd:purple',
           'xkcd:orange', 'xkcd:magenta', 'xkcd:tan', 'xkcd:black', 'xkcd:cyan', 'xkcd:gold',
           'xkcd:dark green', 'xkcd:cream', 'xkcd:lavender', 'xkcd:turquoise', 'xkcd:dark blue',
@@ -245,17 +260,23 @@ def plot_2D(sorted_plots_list, x_axis, plot_title, x_upper, x_axis_label, x_lim,
 
     if x_axis_label:
         ax.set_xlabel(x_axis, fontsize=fs)
+
     if y_axis_label:
         ax.set_ylabel('Normalized Test Return', fontsize=fs)
+
     if x_upper is not None:
         _, upper = ax.get_xlim()
         if upper > x_upper:
             ax.set_xlim(0, x_upper)
-    ax.set_yticks(np.arange(0, 1.1, step=0.2))
+
+    if norm_y_axis:
+        ax.set_yticks(np.arange(0, 1.1, step=0.2))
+
     if x_lim is not None:
         ax.set_xlim(0, x_lim)
     ax.grid(linestyle="--", linewidth=0.5, color='.25', zorder=-10)
     ax.set_facecolor('xkcd:white')
+
     if legend:
         box = ax.get_position()
         ax.set_position([box.x0, box.y0 + box.height * 0.15, box.width, box.height * 0.9])
@@ -276,6 +297,7 @@ def usage():
           "                              [-h | --help] \n"
           "                              [-i | --ica] \n"
           "                              [-l | --location] <input folder location> \n"
+          "                              [-L | --labels] <list of custom labels> \n"
           "                              [-m | --multi_train] \n"
           "                              [-n | --iterations] \n"
           "                              [-o | --output_return] \n"
@@ -288,6 +310,7 @@ def usage():
           "                              [-v | --verbose] \n"
           "                              [-x | --x_range] <Upper X-range of the plot> \n"
           "                              [-y | --y_axis_label] \n"
+          "                              [-Y | --norm_y] \n"
           )
 
 
@@ -311,14 +334,16 @@ def main(argv):
     verbose = False
     first_trained = False
     step_size = 400
+    labels = None
+    norm_y_axis = False
 
     try:
-        opts, args = getopt.getopt(argv, "h bpintsoaygcvmfCl:r:d:u:x:S:",
+        opts, args = getopt.getopt(argv, "h bpintsoaygcvmfCYl:r:d:u:x:S:L:",
                                    ["baseline", "pca", "ica", "iterations", "time", "samples",
                                     "output_return", "x_axis_label", "y_axis_label", "legend",
                                     "centered", "verbose", "multi_train", "first_trained",
-                                    "clip_frac", "location=", "reward_fn=", "plot_dims=",
-                                    "sample_threshold=", "x_range=", "step_size="])
+                                    "clip_frac", "norm_y", "location=", "reward_fn=", "plot_dims=",
+                                    "sample_threshold=", "x_range=", "step_size=", "labels"])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -395,10 +420,20 @@ def main(argv):
             verbose = True
         elif opt in ("-S", "--step_size"):
             step_size = int(arg)
+        elif opt in ("-L", "--labels"):
+            labels = list(map(str, arg.strip('[]').split(',')))
+        elif opt in ("-Y", "--norm_y"):
+            norm_y_axis = True
 
         if first_trained and not multi_train:
             first_trained = False
             print("Warning: 'first_trained' set to True while 'multi_train' is not!")
+
+    if labels is not None:
+        if len(labels) != len(behavior_folders):
+            print("ERROR: Inconsistency between no. of plots:", len(behavior_folders), "and no. of",
+                  " custom labels provided:", len(labels))
+            sys.exit()
 
     training_folders = []
     # Extract training folders from multiply behavior folders
@@ -408,7 +443,7 @@ def main(argv):
 
     # Extract training info from each training folder
     plot_dicts_list = \
-        extract_plot_info(training_folders, step_size=step_size, verbose=verbose,
+        extract_plot_info(training_folders, step_size=step_size, labels=labels, verbose=verbose,
                           multi_train=multi_train, first_trained=first_trained)
 
     # Select plot dicts and sort them
@@ -420,7 +455,7 @@ def main(argv):
         output_returns(sorted_plots_list, sample_threshold)
 
     plot_2D(sorted_plots_list, x_axis, plot_title, x_upper, x_axis_label, sample_threshold,
-            y_axis_label, legend, plot_key)
+            y_axis_label, norm_y_axis, legend, plot_key)
 
     plt.show()
 
