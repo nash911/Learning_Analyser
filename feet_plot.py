@@ -57,32 +57,32 @@ def main(argv):
         for i, line in enumerate(lines[-window_size:]):
             if len(line) > 1 and not line[0] == '#':
                 h_l, h_r, f_l, f_r = line.split(' ')
-                plot_data[i] = np.array([float(h_r), float(h_l), float(f_r), float(f_l)],
+                plot_data[i] = np.array([float(h_l), float(h_r), float(f_l), float(f_r)],
                                         dtype=bool)
                 t.append(float(i) * time_step)
-        plot_data *= np.array([1, 2, 3, 4], dtype=np.int)
+        plot_data *= np.array([4, 3, 2, 1], dtype=np.int)
 
         ax1.clear()
-        feet = ('Hinde-Right', 'Hinde-Left', 'Front-Right', 'Front-Left')
+        feet = ('Front-Right', 'Front-Left', 'Hinde-Right', 'Hinde-Left')
         y_pos = np.arange(1, len(feet) + 1)
         ax1.set_yticks(y_pos)
         ax1.set_yticklabels(feet)
 
-        ax1.plot(t[-window_size:], plot_data[:len(t), 0].tolist(), '.', color='red',
-                 label='Hinde-Right')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 1].tolist(), '.', color='gold',
+        ax1.plot(t[-window_size:], plot_data[:len(t), 0].tolist(), '.', color='gold',
                  label='Hinde-Left')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 2].tolist(), '.', color='green',
-                 label='Front-Right')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 3].tolist(), '.', color='blue',
+        ax1.plot(t[-window_size:], plot_data[:len(t), 1].tolist(), '.', color='red',
+                 label='Hinde-Right')
+        ax1.plot(t[-window_size:], plot_data[:len(t), 2].tolist(), '.', color='blue',
                  label='Front-Left')
+        ax1.plot(t[-window_size:], plot_data[:len(t), 3].tolist(), '.', color='green',
+                 label='Front-Right')
 
         ax1.set(xlabel='Time(s)', ylabel='Feet')
         ax1.set_ylim(0.5, 5)
         ax1.legend(loc='upper right')
 
     def force_plot_animate(i):
-        seconds = 10
+        seconds = 5
         window_size = seconds * 30
         time_step = 0.033332
         graph_data = open(file_name, 'r').read()
@@ -94,25 +94,26 @@ def main(argv):
         for i, line in enumerate(lines[-window_size:]):
             if len(line) > 1 and not line[0] == '#':
                 h_l, h_r, f_l, f_r = line.split(' ')
-                plot_data[i] = np.array([float(h_r), float(h_l), float(f_r), float(f_l)])
+                plot_data[i] = np.array([float(h_l), float(h_r), float(f_l), float(f_r)])
                 t.append(float(i) * time_step)
 
         ax1.clear()
 
-        ax1.plot(t[-window_size:], plot_data[:len(t), 0].tolist(), color='red',
-                 label='Hinde-Right')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 1].tolist(), color='gold',
+        ax1.plot(t[-window_size:], plot_data[:len(t), 0].tolist(), color='gold',
                  label='Hinde-Left')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 2].tolist(), color='green',
-                 label='Front-Right')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 3].tolist(), color='blue',
+        ax1.plot(t[-window_size:], plot_data[:len(t), 1].tolist(), color='red',
+                 label='Hinde-Right')
+        ax1.plot(t[-window_size:], plot_data[:len(t), 2].tolist(), color='blue',
                  label='Front-Left')
+        ax1.plot(t[-window_size:], plot_data[:len(t), 3].tolist(), color='green',
+                 label='Front-Right')
 
         ax1.set(xlabel='Time(s)', ylabel='Avg. Force')
-        ax1.legend(loc='upper right')
+        ax1.legend(bbox_to_anchor=(0.5, -0.125), loc='upper center', prop={'size': 12}, ncol=4)
+        fig.subplots_adjust(bottom=0.2)
 
     def force_ratio_plot_animate(i):
-        seconds = 10
+        seconds = 5
         window_size = seconds * 30
         time_step = 0.033332
         graph_data = open(file_name, 'r').read()
@@ -125,27 +126,41 @@ def main(argv):
             if len(line) > 1 and not line[0] == '#':
                 h_l, h_r, f_l, f_r = line.split(' ')
                 h_l, h_r, f_l, f_r = float(h_l), float(h_r), float(f_l), float(f_r)
-                plot_data[i] = np.array([h_r/h_l, h_r/f_r, h_r/f_l,
-                                         h_l/f_r, h_l/f_l, f_r/f_l])
+
+                try:
+                    plot_data[i] = np.array([h_l/h_r, h_l/f_l, h_l/f_r, h_r/f_l, h_r/f_r, f_l/f_r])
+                except ZeroDivisionError:
+                    f_ratios = list()
+                    feet_forces = [h_l, h_r, f_l, f_r]
+                    for j, f1 in enumerate(feet_forces):
+                        for f2 in feet_forces[j+1:]:
+                            if f1 == 0. or f2 == 0.:
+                                f_ratios.append(1.0)
+                            else:
+                                f_ratios.append(f1/f2)
+
+                    plot_data[i] = np.array(f_ratios)
+
                 t.append(float(i) * time_step)
 
         ax1.clear()
 
         ax1.plot(t[-window_size:], plot_data[:len(t), 0].tolist(), color='orange',
-                 label='H-Right/H-Left')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 1].tolist(), color='brown',
-                 label='H-Right/F-Right')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 2].tolist(), color='violet',
-                 label='H-Right/F-Left')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 3].tolist(), color='greenyellow',
-                 label='H-Left/F-Right')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 4].tolist(), color='green',
+                 label='H-Left/H-Right')
+        ax1.plot(t[-window_size:], plot_data[:len(t), 1].tolist(), color='green',
                  label='H-Left/F-Left')
+        ax1.plot(t[-window_size:], plot_data[:len(t), 2].tolist(), color='chartreuse',
+                 label='H-Left/F-Right')
+        ax1.plot(t[-window_size:], plot_data[:len(t), 3].tolist(), color='purple',
+                 label='H-Right/F-Left')
+        ax1.plot(t[-window_size:], plot_data[:len(t), 4].tolist(), color='brown',
+                 label='H-Right/F-Right')
         ax1.plot(t[-window_size:], plot_data[:len(t), 5].tolist(), color='cyan',
-                 label='F-Right/F-Left')
+                 label='F-Left/F-Right')
 
-        ax1.set(xlabel='Time(s)', ylabel='Avg. Force')
-        ax1.legend(loc='upper left')
+        ax1.set(xlabel='Time(s)', ylabel='Force Ratio')
+        ax1.legend(bbox_to_anchor=(0.5, -0.125), loc='upper center', prop={'size': 12}, ncol=3)
+        fig.subplots_adjust(bottom=0.2)
 
     if plot_type == 'contact':
         _ = animation.FuncAnimation(fig, contact_plot_animate, interval=100)
