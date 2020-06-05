@@ -1,6 +1,5 @@
 import sys
 import getopt
-import numpy as np
 import os
 import re
 from collections import OrderedDict
@@ -18,15 +17,19 @@ run_args_dict['running'] = '/home/nash/DeepMimic/args/run_humanoid3d_run_args.tx
 run_args_dict['walking'] = '/home/nash/DeepMimic/args/run_humanoid3d_walk_args.txt'
 
 run_args_dict['walk'] = '/home/nash/DeepMimic/args/run_salamander_walk_args.txt'
-
 run_args_dict['run'] = '/home/nash/DeepMimic/args/run_cheetah_args.txt'
+run_args_dict['slither'] = '/home/nash/DeepMimic/args/run_snake_slither_args.txt'
+run_args_dict['crawl'] = '/home/nash/DeepMimic/args/run_snake_crawl_args.txt'
 
 
 def extract_training_folders(behavior_folder, training_folders):
     sub_dirs = [d[0] for d in os.walk(behavior_folder)]
 
     # Extract behavior name from the path string
-    if 'humanoid' in behavior_folder:
+    if 'MIG2019' in behavior_folder:
+        behavior = behavior_folder[behavior_folder.find('MIG2019'):]
+        behavior = behavior.replace("MIG2019/", "")
+    elif 'humanoid' in behavior_folder:
         behavior = behavior_folder[behavior_folder.find('humanoid3d'):]
         behavior = behavior.replace("humanoid3d/", "")
     elif 'salamander' in behavior_folder:
@@ -35,13 +38,16 @@ def extract_training_folders(behavior_folder, training_folders):
     elif 'cheetah' in behavior_folder:
         behavior = behavior_folder[behavior_folder.find('cheetah'):]
         behavior = behavior.replace("cheetah/", "")
+    elif 'snake' in behavior_folder:
+        behavior = behavior_folder[behavior_folder.find('snake'):]
+        behavior = behavior.replace("snake/", "")
     else:
         print("Error: Either missing or unknown character in folder path: ", behavior_folder)
         sys.exit()
     behavior = behavior.split('/', 1)[0]
 
     for d in sub_dirs:
-        if 'd_2' in d and not ('centered_' in d):
+        if 'd_2' in d and not ('centered_' or '_learn' in d):
             continue
         elif 'mixed_motions' in d:
             continue
@@ -125,10 +131,10 @@ def extract_training_info(training_folders, behavior, baseline, pca, ica, eval, 
             training_dict['dims'] = dims
             training_dict['label'] = 'pca'
             for f in files[0]:
-                if 'pca_euler_humanoid3d' in f:
+                if 'pca_euler' in f:
                     training_dict['red_file'] = f
                     break
-                elif 'ica_euler_humanoid3d' in f:
+                elif 'ica_euler' in f:
                     training_dict['red_file'] = f
                     break
                 # # TODO: To be removed
@@ -147,7 +153,7 @@ def extract_training_info(training_folders, behavior, baseline, pca, ica, eval, 
             training_dict['dims'] = dims
             training_dict['label'] = 'ica'
             for f in files[0]:
-                if 'ica_euler_humanoid3d' in f:
+                if 'ica_euler' in f:
                     training_dict['red_file'] = f
                     break
 
@@ -269,23 +275,31 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_
     return
 
 
-def run_playback(reduced_motion=None, single=False, dimension=None, behavior=None):
+def run_playback(playback_file=None, character=None, single=False, reduced_motion=None,
+                 dimension=None, behavior=None):
     playback_dict = OrderedDict()
     playback_dict['scene'] = "kin_char"
-    playback_dict['character_file'] = "data/characters/humanoid3d.txt"
 
-    if reduced_motion:
+    character_file = "data/characters/{}.txt".format(character)
+    if not os.path.exists(character_file):
+        print("Error: Incorrect character file/path:", character_file)
+        sys.exit()
+    else:
+        playback_dict['character_file'] = character_file
+
+    if playback_file is not None:
+        playback_dict['motion_file'] = playback_file
+    elif reduced_motion:
+        motion_file = "/home/nash/Dropbox/Clemson/Projects/quat_conversions/pca/Output/"
         if dimension is None:
-            print("Error: For reduced-motion playback, specify dimension using flag: "
-                  "[-D | --dimension]")
-            sys.exit()
-
-        if single:
-            motion_file = "/home/nash/Dropbox/Clemson/Projects/quat_conversions/pca/Output/"
-            playback_dict['motion_file'] = motion_file + ('pca_traj_single_%d.txt' % dimension)
+            playback_dict['motion_file'] = motion_file + 'pca_traj.txt'
+        elif single:
+            playback_dict['motion_file'] = motion_file + 'single_coactivations/' + \
+                ('pca_single_traj_%d.txt' % dimension)
         else:
-            motion_file = "/home/nash/Dropbox/Clemson/Projects/quat_conversions/pca/Output/"
-            playback_dict['motion_file'] = motion_file + ('pca_traj_%d.txt' % dimension)
+            print("Error: For reduced-motion playback, set single flag along with dimension using:"
+                  "[-S | --single]")
+            sys.exit()
     else:
         if behavior is None:
             print("Error: For independent-joint-action motion-playback, specify the behavior: "
@@ -314,10 +328,11 @@ def run_playback(reduced_motion=None, single=False, dimension=None, behavior=Non
 
 def usage():
     print("Usage: Evaluate.py [-a | --log_actions] <input to PD controller> \n"
+          "                   [-A | --allow_parent_collision]  \n"
           "                   [-b | --baseline] \n"
           "                   [-B | --behavior] <behavior name (run/walk/...)> \n"
           "                   [-c | --check_collision]  \n"
-          "                   [-C | --allow_parent_collision]  \n"
+          "                   [-C | --character]  \n"
           "                   [-d | --duration] <evaluation duration> \n"
           "                   [-D | --dimension] <reduced dimension> \n"
           "                   [-e | --eval]  \n"
@@ -335,7 +350,7 @@ def usage():
           "                   [-P | --playback] \n"
           "                   [-r | --reward_fn] <evaluation reward function (0/1/2/...)> \n"
           "                   [-R | --reduced] \n"
-          "                   [-s | --single] \n"
+          "                   [-S | --single] \n"
           "                   [-x | --log_excitations] <output of policy network> \n"
           )
 
@@ -344,7 +359,6 @@ def main(argv):
     run_file = 'run_args_file.txt'
     reduced_motion_file = None
     behavior_folder = None
-    dims = np.arange(0, 29).tolist()
     all = True
     log_excitations = False
     log_actions = False
@@ -365,19 +379,20 @@ def main(argv):
     com_threshold = -1.0
 
     playback = False
+    character = None
     reduced_motion = False
     single = False
     dimension = None
     behavior = None
 
     try:
-        opts, args = getopt.getopt(argv, "h abpiefxoPRsCcl:m:n:d:r:I:D:B:k:L:",
-                                   ["log_excitations", "baseline", "pca", "eval",
-                                    "imitate_excitations", "force_eval", "log_actions", "log_pose",
-                                    "playback", "reduced", "single", "allow_parent_collision",
-                                    "check_collision", "location=", "reduced_motion_file=",
-                                    "num_evals=", "duration=", "reward_fn=", "intermediate_model=",
-                                    "dimension=", "behavior=", "select_k=", "low_com="])
+        opts, args = getopt.getopt(argv, "h aAbpiefxoPRScC:l:m:n:d:r:I:D:B:k:L:",
+                                   ["log_actions", "allow_parent_collision", "baseline", "pca",
+                                    "imitate_excitations", "eval", "force_eval", "log_excitations",
+                                    "log_pose", "playback", "reduced", "single", "check_collision",
+                                    "character=", "location=", "reduced_motion_file=", "num_evals=",
+                                    "duration=", "reward_fn=", "intermediate_model=", "dimension=",
+                                    "behavior=", "select_k=", "low_com="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -422,7 +437,7 @@ def main(argv):
             playback = True
         elif opt in ("-R", "--reduced"):
             reduced_motion = True
-        elif opt in ("-s", "--single"):
+        elif opt in ("-S", "--single"):
             single = True
         elif opt in ("-D", "--dimension"):
             dimension = int(arg)
@@ -434,12 +449,14 @@ def main(argv):
             com_threshold = float(arg)
         elif opt in ("-c", "--check_collision"):
             check_collision = True
-        elif opt in ("-C", "--allow_parent_collision"):
+        elif opt in ("-A", "--allow_parent_collision"):
             allow_parent_collision = True
+        elif opt in ("-C", "--character"):
+            character = arg
 
     if playback:
-        run_playback(reduced_motion=reduced_motion, single=single, dimension=dimension,
-                     behavior=behavior)
+        run_playback(playback_file=reduced_motion_file, character=character, single=single,
+                     reduced_motion=reduced_motion, dimension=dimension, behavior=behavior)
         return
 
     if all:
