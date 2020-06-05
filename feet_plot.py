@@ -125,22 +125,20 @@ def main(argv):
         for i, line in enumerate(lines[-window_size:]):
             if len(line) > 1 and not line[0] == '#':
                 h_l, h_r, f_l, f_r = line.split(' ')
-                h_l, h_r, f_l, f_r = float(h_l), float(h_r), float(f_l), float(f_r)
+                feet_forces = [float(h_l), float(h_r), float(f_l), float(f_r)]
+                f_ratios = list()
 
-                try:
-                    plot_data[i] = np.array([h_l/h_r, h_l/f_l, h_l/f_r, h_r/f_l, h_r/f_r, f_l/f_r])
-                except ZeroDivisionError:
-                    f_ratios = list()
-                    feet_forces = [h_l, h_r, f_l, f_r]
-                    for j, f1 in enumerate(feet_forces):
-                        for f2 in feet_forces[j+1:]:
-                            if f1 == 0. or f2 == 0.:
-                                f_ratios.append(1.0)
+                for j, f1 in enumerate(feet_forces):
+                    for f2 in feet_forces[j+1:]:
+                        if f1 == 0. or f2 == 0.:
+                            f_ratios.append(1.0)
+                        else:
+                            if f1 >= f2:
+                                f_ratios.append(f2/f1)
                             else:
                                 f_ratios.append(f1/f2)
 
-                    plot_data[i] = np.array(f_ratios)
-
+                plot_data[i] = np.array(f_ratios)
                 t.append(float(i) * time_step)
 
         ax1.clear()
@@ -159,6 +157,7 @@ def main(argv):
                  label='F-Left/F-Right')
 
         ax1.set(xlabel='Time(s)', ylabel='Force Ratio')
+        ax1.set_yticks(np.arange(0, 1.1, step=0.2))
         ax1.legend(bbox_to_anchor=(0.5, -0.125), loc='upper center', prop={'size': 12}, ncol=3)
         fig.subplots_adjust(bottom=0.2)
 
