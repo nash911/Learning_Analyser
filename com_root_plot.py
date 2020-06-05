@@ -11,18 +11,19 @@ style.use('seaborn')
 def main(argv):
     obj = 'root'
     var = 'pos'
-    char = 'sim'
+    char = None
+    torque = False
 
     try:
-        opts, args = getopt.getopt(argv, "hcrpvaogks", ["com", "root", "pos", "vel", "acc", "rot",
-                                                        "ang_vel" "kin", "sim"])
+        opts, args = getopt.getopt(argv, "hcrpvaogkst", ["com", "root", "pos", "vel", "acc", "rot",
+                                                         "ang_vel" "kin", "sim", "torque"])
     except getopt.GetoptError:
-        print("plot.py -c/r -p/v/a/r/g -k/s")
+        print("plot.py -c/r -p/v/a/o/g/t -k/s")
         sys.exit(2)
 
     for opt, arg in opts:
         if opt == '-h':
-            print("plot.py -c/r -p/v/a/r/g -k/s")
+            print("plot.py -c/r -p/v/a/o/g/t -k/s")
             sys.exit()
         elif opt in ("-c", "--com"):
             obj = 'com'
@@ -42,6 +43,8 @@ def main(argv):
             char = 'kin'
         elif opt in ("-s", "--sim"):
             char = 'sim'
+        elif opt in ("-t", "--torque"):
+            var = 'torque'
 
     if char == 'kin':
         title_1 = 'Kinematic-Character '
@@ -88,6 +91,14 @@ def main(argv):
         legend_x = 'AngVel-X'
         legend_y = 'AngVel-Y'
         legend_z = 'AngVel-Z'
+    elif var == 'torque':
+        file_name = '/home/nash/DeepMimic/output/avg_torque.dat'
+        y_label = 'Torque'
+        title_1 = ''
+        title_2 = ''
+        title_3 = 'Average Torque Plot'
+        legend_avg_torque = 'Avg. Torque'
+        legend_torque_reward = 'Torque Reward'
     legend_speed = 'Speed-XZ'
 
     fig = plt.figure()
@@ -110,12 +121,19 @@ def main(argv):
         k_z = list()
         k_speed = list()
 
+        avg_tau = list()
+        tau_reward = list()
+
         for i, line in enumerate(lines[-window_size:]):
             if len(line) > 1 and not line[0] == '#':
                 try:
                     sim_x, sim_y, sim_z, kin_x, kin_y, kin_z, = line.split(' ')
                 except ValueError:
-                    sim_x, sim_y, sim_z, kin_x, kin_y, kin_z, sim_speed, kin_speed = line.split(' ')
+                    try:
+                        sim_x, sim_y, sim_z, kin_x, kin_y, kin_z, sim_speed, kin_speed = \
+                            line.split(' ')
+                    except ValueError:
+                        avg_torque, torque_reward = line.split(' ')
 
                 t.append(float(i) * time_step)
                 if char == 'sim':
@@ -126,7 +144,7 @@ def main(argv):
                         s_speed.append(float(sim_speed))
                     except UnboundLocalError:
                         pass
-                else:
+                elif char == 'kin':
                     k_x.append(float(kin_x))
                     k_y.append(float(kin_y))
                     k_z.append(float(kin_z))
@@ -134,6 +152,9 @@ def main(argv):
                         k_speed.append(float(kin_speed))
                     except UnboundLocalError:
                         pass
+                else:
+                    avg_tau.append(float(avg_torque))
+                    tau_reward.append(float(torque_reward))
 
         if var == 'acc':
             if char == 'sim':
@@ -153,15 +174,20 @@ def main(argv):
             ax1.plot(t[-window_size:], s_x[-window_size:], label=legend_x)
             ax1.plot(t[-window_size:], s_y[-window_size:], label=legend_y)
             ax1.plot(t[-window_size:], s_z[-window_size:], label=legend_z)
-            ax1.plot(t[-window_size:], s_speed[-window_size:], label=legend_speed)
-        else:
+            if len(s_speed) > 0:
+                ax1.plot(t[-window_size:], s_speed[-window_size:], label=legend_speed)
+        elif char == 'kin':
             ax1.plot(t[-window_size:], k_x[-window_size:], label=legend_x)
             ax1.plot(t[-window_size:], k_y[-window_size:], label=legend_y)
             ax1.plot(t[-window_size:], k_z[-window_size:], label=legend_z)
-            ax1.plot(t[-window_size:], k_speed[-window_size:], label=legend_speed)
+            if len(k_speed) > 0:
+                ax1.plot(t[-window_size:], k_speed[-window_size:], label=legend_speed)
+        else:
+            ax1.plot(t[-window_size:], avg_tau[-window_size:], label=legend_avg_torque)
+            ax1.plot(t[-window_size:], tau_reward[-window_size:], label=legend_torque_reward)
 
         ax1.set(xlabel='Time(s)', ylabel=y_label)
-        ax1.legend()
+        ax1.legend(loc='upper right')
 
     ani = animation.FuncAnimation(fig, animate, interval=100)
     plt.show()
