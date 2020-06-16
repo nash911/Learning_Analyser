@@ -58,42 +58,42 @@ def main(argv):
 
     if var == 'pos':
         file_name = '/home/nash/DeepMimic/output/' + obj + '_pos.dat'
-        y_label = 'Position (m)'
+        y_label = ['Position (m)']
         title_3 = 'Position Plot'
         legend_x = 'Pos-X'
         legend_y = 'Pos-Y'
         legend_z = 'Pos-Z'
     elif var == 'vel':
         file_name = '/home/nash/DeepMimic/output/' + obj + '_vel.dat'
-        y_label = 'Velocity (m/s)'
+        y_label = ['Velocity (m/s)', 'Speed (m/s)']
         title_3 = 'Velocity Plot'
         legend_x = 'Vel-X'
         legend_y = 'Vel-Y'
         legend_z = 'Vel-Z'
     elif var == 'acc':
         file_name = '/home/nash/DeepMimic/output/' + obj + '_vel.dat'
-        y_label = 'Acceleration (m/s^2)'
+        y_label = ['Acceleration (m/s^2)']
         title_3 = 'Acceleration Plot'
         legend_x = 'Acc-X'
         legend_y = 'Acc-Y'
         legend_z = 'Acc-Z'
     elif var == 'rot':
         file_name = '/home/nash/DeepMimic/output/' + obj + '_rot.dat'
-        y_label = 'Angle (rad)'
+        y_label = ['Angle (rad)']
         title_3 = 'Rotation Plot'
         legend_x = 'Rot-X'
         legend_y = 'Rot-Y'
         legend_z = 'Rot-Z'
     elif var == 'ang_vel':
         file_name = '/home/nash/DeepMimic/output/' + obj + '_ang_vel.dat'
-        y_label = 'Angular Velocity (rad/s)'
+        y_label = ['Angular Velocity (rad/s)']
         title_3 = 'Angular Velocity Plot'
         legend_x = 'AngVel-X'
         legend_y = 'AngVel-Y'
         legend_z = 'AngVel-Z'
     elif var == 'torque':
         file_name = '/home/nash/DeepMimic/output/avg_torque.dat'
-        y_label = 'Torque'
+        y_label = ['Torque', 'Norm. Reward']
         title_1 = ''
         title_2 = ''
         title_3 = 'Average Torque Plot'
@@ -101,9 +101,19 @@ def main(argv):
         legend_torque_reward = 'Torque Reward'
     legend_speed = 'Speed-XZ'
 
-    fig = plt.figure()
+    graph_data = open(file_name, 'r').read()
+    lns = graph_data.split('\n')
+    num_data = len(lns[1].split(' '))
+
+    if num_data in [2, 8]:
+        num_plots = 2
+    elif num_data == 6:
+        num_plots = 1
+    else:
+        print("Error")
+
+    fig, axs = plt.subplots(num_plots, sharey=False, sharex=True)
     fig.suptitle((title_1 + title_2 + title_3), fontsize=20)
-    ax1 = fig.add_subplot(1, 1, 1)
 
     def animate(i):
         window_size = 300
@@ -169,27 +179,48 @@ def main(argv):
             t = np.array(t)
             t = ((t[:-1] + t[1:]) / 2).tolist()
 
-        ax1.clear()
-        if char == 'sim':
-            ax1.plot(t[-window_size:], s_x[-window_size:], label=legend_x)
-            ax1.plot(t[-window_size:], s_y[-window_size:], label=legend_y)
-            ax1.plot(t[-window_size:], s_z[-window_size:], label=legend_z)
-            if len(s_speed) > 0:
-                ax1.plot(t[-window_size:], s_speed[-window_size:], label=legend_speed)
-        elif char == 'kin':
-            ax1.plot(t[-window_size:], k_x[-window_size:], label=legend_x)
-            ax1.plot(t[-window_size:], k_y[-window_size:], label=legend_y)
-            ax1.plot(t[-window_size:], k_z[-window_size:], label=legend_z)
-            if len(k_speed) > 0:
-                ax1.plot(t[-window_size:], k_speed[-window_size:], label=legend_speed)
+        if num_plots > 1:
+            for ax in axs:
+                ax.clear()
         else:
-            ax1.plot(t[-window_size:], avg_tau[-window_size:], label=legend_avg_torque)
-            ax1.plot(t[-window_size:], tau_reward[-window_size:], label=legend_torque_reward)
+            axs.clear()
 
-        ax1.set(xlabel='Time(s)', ylabel=y_label)
-        ax1.legend(loc='upper right')
+        if char == 'sim':
+            (axs[0] if num_plots > 1 else axs).plot(t[-window_size:], s_x[-window_size:],
+                                                    label=legend_x)
+            (axs[0] if num_plots > 1 else axs).plot(t[-window_size:], s_y[-window_size:],
+                                                    label=legend_y)
+            (axs[0] if num_plots > 1 else axs).plot(t[-window_size:], s_z[-window_size:],
+                                                    label=legend_z)
+            if len(s_speed) > 0:
+                (axs[1] if num_plots > 1 else axs).plot(t[-window_size:], s_speed[-window_size:],
+                                                        label=legend_speed, color='purple')
+        elif char == 'kin':
+            (axs[0] if num_plots > 1 else axs).plot(t[-window_size:], k_x[-window_size:],
+                                                    label=legend_x)
+            (axs[0] if num_plots > 1 else axs).plot(t[-window_size:], k_y[-window_size:],
+                                                    label=legend_y)
+            (axs[0] if num_plots > 1 else axs).plot(t[-window_size:], k_z[-window_size:],
+                                                    label=legend_z)
+            if len(k_speed) > 0:
+                (axs[1] if num_plots > 1 else axs).plot(t[-window_size:], k_speed[-window_size:],
+                                                        label=legend_speed, color='purple')
+        else:
+            axs[0].plot(t[-window_size:], avg_tau[-window_size:], label=legend_avg_torque,
+                        color='red')
+            axs[1].plot(t[-window_size:], tau_reward[-window_size:], label=legend_torque_reward,
+                        color='green')
+            axs[1].set_yticks(np.arange(0, 1.1, step=0.2))
 
-    ani = animation.FuncAnimation(fig, animate, interval=100)
+        if num_plots > 1:
+            for ax, y_lab in zip(axs, y_label):
+                ax.set(xlabel='Time(s)', ylabel=y_lab)
+                ax.legend(loc='upper right')
+        else:
+            axs.set(xlabel='Time(s)', ylabel=y_label[0])
+            axs.legend(loc='upper right')
+
+    _ = animation.FuncAnimation(fig, animate, interval=100)
     plt.show()
 
 
