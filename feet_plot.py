@@ -9,12 +9,13 @@ style.use('seaborn')
 
 
 def main(argv):
+    character = 'salamander'
     plot_type = None
     file_name = None
     title = None
 
     try:
-        opts, args = getopt.getopt(argv, "hcfr", ["contact", "force", "ratio"])
+        opts, args = getopt.getopt(argv, "hcfrC:", ["contact", "force", "ratio", "character"])
     except getopt.GetoptError:
         print("plot.py -c/f")
         sys.exit(2)
@@ -25,6 +26,8 @@ def main(argv):
             sys.exit()
         elif opt in ("-c", "--contact"):
             plot_type = 'contact'
+        elif opt in ("-C", "--character"):
+            character = arg
         elif opt in ("-f", "--force"):
             plot_type = 'force'
         elif opt in ("-r", "--ratio"):
@@ -32,7 +35,10 @@ def main(argv):
 
     if plot_type == 'contact':
         file_name = '/home/nash/DeepMimic/output/feet_contact_force.dat'
-        title = 'Feet Contact Plot'
+        if character == 'salamander':
+            title = 'Feet Contact Plot'
+        elif character == 'snake':
+            title = 'Spine Contact Plot'
     elif plot_type == 'force':
         file_name = '/home/nash/DeepMimic/output/avg_feet_contact_force.dat'
         title = 'Feet Avg. Force Plot'
@@ -42,7 +48,7 @@ def main(argv):
 
     fig = plt.figure()
     fig.suptitle(title, fontsize=20)
-    ax1 = fig.add_subplot(1, 1, 1)
+    axs = fig.add_subplot(1, 1, 1)
 
     def contact_plot_animate(i):
         seconds = 3
@@ -62,24 +68,59 @@ def main(argv):
                 t.append(float(i) * time_step)
         plot_data *= np.array([4, 3, 2, 1], dtype=np.int)
 
-        ax1.clear()
+        axs.clear()
         feet = ('Front-Right', 'Front-Left', 'Hinde-Right', 'Hinde-Left')
         y_pos = np.arange(1, len(feet) + 1)
-        ax1.set_yticks(y_pos)
-        ax1.set_yticklabels(feet)
+        axs.set_yticks(y_pos)
+        axs.set_yticklabels(feet)
 
-        ax1.plot(t[-window_size:], plot_data[:len(t), 0].tolist(), '.', color='gold',
+        axs.plot(t[-window_size:], plot_data[:len(t), 0].tolist(), '.', color='gold',
                  label='Hinde-Left')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 1].tolist(), '.', color='red',
+        axs.plot(t[-window_size:], plot_data[:len(t), 1].tolist(), '.', color='red',
                  label='Hinde-Right')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 2].tolist(), '.', color='blue',
+        axs.plot(t[-window_size:], plot_data[:len(t), 2].tolist(), '.', color='blue',
                  label='Front-Left')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 3].tolist(), '.', color='green',
+        axs.plot(t[-window_size:], plot_data[:len(t), 3].tolist(), '.', color='green',
                  label='Front-Right')
 
-        ax1.set(xlabel='Time(s)', ylabel='Feet')
-        ax1.set_ylim(0.5, 5)
-        ax1.legend(loc='upper right')
+        axs.set(xlabel='Time(s)', ylabel='Feet')
+        axs.set_ylim(0.5, 5)
+        axs.legend(loc='upper right')
+
+    def contact_plot_snake_animate(i):
+        colors = ['gold', 'red', 'blue', 'green', 'orange', 'black', 'purple', 'cyan', 'grey',
+                  'violet', 'indigo']
+        seconds = 3
+        window_size = seconds * 30 * 20
+        time_step = 0.033332 / 20.0
+        graph_data = open(file_name, 'r').read()
+        lines = graph_data.split('\n')
+
+        t = list()
+        num_plots = len(lines[1].split(' '))
+        plot_data = np.zeros((window_size, num_plots))
+
+        for i, line in enumerate(lines[-window_size:]):
+            if len(line) > 1 and not line[0] == '#':
+                ln = line.split(' ')
+                plot_data[i] = np.array([[float(l) for l in ln]], dtype=bool)
+                t.append(float(i) * time_step)
+        plot_data *= np.array(list(reversed(range(1, num_plots+1))), dtype=np.int)
+
+        axs.clear()
+        feet = (['S-%d' % i for i in list(reversed(range(1, num_plots+1)))])
+        y_pos = np.arange(1, len(feet) + 1)
+        axs.set_yticks(y_pos)
+        axs.set_yticklabels(feet)
+
+        for i, lab in enumerate(reversed(feet)):
+            axs.plot(t[-window_size:], plot_data[:len(t), i].tolist(), '.', color=colors[i],
+                     label=lab)
+
+        axs.set(xlabel='Time(s)', ylabel='Spine')
+        axs.set_ylim(0.5, num_plots+1)
+        axs.legend(bbox_to_anchor=(0.5, -0.125), loc='upper center', prop={'size': 12}, ncol=5)
+        fig.subplots_adjust(bottom=0.2)
 
     def force_plot_animate(i):
         seconds = 5
@@ -97,19 +138,19 @@ def main(argv):
                 plot_data[i] = np.array([float(h_l), float(h_r), float(f_l), float(f_r)])
                 t.append(float(i) * time_step)
 
-        ax1.clear()
+        axs.clear()
 
-        ax1.plot(t[-window_size:], plot_data[:len(t), 0].tolist(), color='gold',
+        axs.plot(t[-window_size:], plot_data[:len(t), 0].tolist(), color='gold',
                  label='Hinde-Left')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 1].tolist(), color='red',
+        axs.plot(t[-window_size:], plot_data[:len(t), 1].tolist(), color='red',
                  label='Hinde-Right')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 2].tolist(), color='blue',
+        axs.plot(t[-window_size:], plot_data[:len(t), 2].tolist(), color='blue',
                  label='Front-Left')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 3].tolist(), color='green',
+        axs.plot(t[-window_size:], plot_data[:len(t), 3].tolist(), color='green',
                  label='Front-Right')
 
-        ax1.set(xlabel='Time(s)', ylabel='Avg. Force')
-        ax1.legend(bbox_to_anchor=(0.5, -0.125), loc='upper center', prop={'size': 12}, ncol=4)
+        axs.set(xlabel='Time(s)', ylabel='Avg. Force')
+        axs.legend(bbox_to_anchor=(0.5, -0.125), loc='upper center', prop={'size': 12}, ncol=4)
         fig.subplots_adjust(bottom=0.2)
 
     def force_ratio_plot_animate(i):
@@ -141,28 +182,31 @@ def main(argv):
                 plot_data[i] = np.array(f_ratios)
                 t.append(float(i) * time_step)
 
-        ax1.clear()
+        axs.clear()
 
-        ax1.plot(t[-window_size:], plot_data[:len(t), 0].tolist(), color='orange',
+        axs.plot(t[-window_size:], plot_data[:len(t), 0].tolist(), color='orange',
                  label='H-Left/H-Right')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 1].tolist(), color='green',
+        axs.plot(t[-window_size:], plot_data[:len(t), 1].tolist(), color='green',
                  label='H-Left/F-Left')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 2].tolist(), color='chartreuse',
+        axs.plot(t[-window_size:], plot_data[:len(t), 2].tolist(), color='chartreuse',
                  label='H-Left/F-Right')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 3].tolist(), color='purple',
+        axs.plot(t[-window_size:], plot_data[:len(t), 3].tolist(), color='purple',
                  label='H-Right/F-Left')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 4].tolist(), color='brown',
+        axs.plot(t[-window_size:], plot_data[:len(t), 4].tolist(), color='brown',
                  label='H-Right/F-Right')
-        ax1.plot(t[-window_size:], plot_data[:len(t), 5].tolist(), color='cyan',
+        axs.plot(t[-window_size:], plot_data[:len(t), 5].tolist(), color='cyan',
                  label='F-Left/F-Right')
 
-        ax1.set(xlabel='Time(s)', ylabel='Force Ratio')
-        ax1.set_yticks(np.arange(0, 1.1, step=0.2))
-        ax1.legend(bbox_to_anchor=(0.5, -0.125), loc='upper center', prop={'size': 12}, ncol=3)
+        axs.set(xlabel='Time(s)', ylabel='Force Ratio')
+        axs.set_yticks(np.arange(0, 1.1, step=0.2))
+        axs.legend(bbox_to_anchor=(0.5, -0.125), loc='upper center', prop={'size': 12}, ncol=3)
         fig.subplots_adjust(bottom=0.2)
 
     if plot_type == 'contact':
-        _ = animation.FuncAnimation(fig, contact_plot_animate, interval=100)
+        if character == 'salamander':
+            _ = animation.FuncAnimation(fig, contact_plot_animate, interval=100)
+        elif character == 'snake':
+            _ = animation.FuncAnimation(fig, contact_plot_snake_animate, interval=100)
     elif plot_type == 'force':
         _ = animation.FuncAnimation(fig, force_plot_animate, interval=100)
     elif plot_type == 'ratio':
