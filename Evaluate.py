@@ -19,7 +19,7 @@ run_args_dict['walking'] = '/home/nash/DeepMimic/args/run_humanoid3d_walk_args.t
 run_args_dict['walk'] = '/home/nash/DeepMimic/args/run_salamander_walk_args.txt'
 run_args_dict['run'] = '/home/nash/DeepMimic/args/run_cheetah_args.txt'
 run_args_dict['slither'] = '/home/nash/DeepMimic/args/run_snake_slither_args.txt'
-run_args_dict['crawl'] = '/home/nash/DeepMimic/args/run_snake_crawl_args.txt'
+run_args_dict['caterpillar'] = '/home/nash/DeepMimic/args/run_snake_caterpillar_args.txt'
 
 
 def extract_training_folders(behavior_folder, training_folders):
