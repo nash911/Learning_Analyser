@@ -58,6 +58,10 @@ def extract_training_folders(behavior_folder, training_folders):
             continue
         elif 'Older' in d:
             continue
+        elif 'int_output' in d:
+            continue
+        elif 'agent0_models' in d:
+            continue
 
         if 'baseline' in d:
             training_folders.append(d)
@@ -149,11 +153,11 @@ def extract_plot_info(training_folders, step_size=400, labels=None, verbose=Fals
         del lines[0]
 
         learning_iterations = []
-        line_array = np.zeros(5)
-        iter_offset = np.zeros(5)
+        line_array = np.zeros(13)
+        iter_offset = np.zeros(13)
         for line in lines:
             try:
-                line_array = np.array(line.split()[0:5], dtype=np.float32)
+                line_array = np.array(line.split()[0:13], dtype=np.float32)
                 line_array += iter_offset
             except ValueError:  # Encountered "Iterations...", which indicates a new training run
                 if multi_train:
@@ -179,6 +183,7 @@ def extract_plot_info(training_folders, step_size=400, labels=None, verbose=Fals
         learning_curve_data['Test_Return'] = np.array(learning_matrix[:, 4:5],
                                                       dtype=np.float32) / 600.0
         learning_curve_data['Clip_Frac'] = np.array(learning_matrix[:, 16:17], dtype=np.float32)
+        learning_curve_data['Critic_Loss'] = np.array(learning_matrix[:, 12:13], dtype=np.float32)
 
         if labels is not None:
             learning_curve_data['label'] = labels[i]
@@ -326,6 +331,7 @@ def main(argv):
     multi_train = False
     x_axis = 'Samples'
     plot_key = 'Test_Return'
+    # plot_key = 'Critic_Loss'
     x_upper = None
     x_axis_label = True
     y_axis_label = True
