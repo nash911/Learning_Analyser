@@ -13,10 +13,12 @@ def main(argv):
     var = 'pos'
     char = None
     torque = False
+    window_seconds = 10
 
     try:
-        opts, args = getopt.getopt(argv, "hcrpvaogkst", ["com", "root", "pos", "vel", "acc", "rot",
-                                                         "ang_vel" "kin", "sim", "torque"])
+        opts, args = getopt.getopt(argv, "hcrpvaogkstw:", ["com", "root", "pos", "vel", "acc",
+                                                           "rot", "ang_vel" "kin", "sim", "torque",
+                                                           "window_size"])
     except getopt.GetoptError:
         print("plot.py -c/r -p/v/a/o/g/t -k/s")
         sys.exit(2)
@@ -45,6 +47,8 @@ def main(argv):
             char = 'sim'
         elif opt in ("-t", "--torque"):
             var = 'torque'
+        elif opt in ("-w", "--window_size"):
+            window_seconds = int(arg)
 
     if char == 'kin':
         title_1 = 'Kinematic-Character '
@@ -116,7 +120,7 @@ def main(argv):
     fig.suptitle((title_1 + title_2 + title_3), fontsize=20)
 
     def animate(i):
-        window_size = 300
+        window_size = 30 * window_seconds
         time_step = 0.033332
         graph_data = open(file_name, 'r').read()
         lines = graph_data.split('\n')

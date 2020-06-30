@@ -13,9 +13,11 @@ def main(argv):
     plot_type = None
     file_name = None
     title = None
+    window_seconds = 3
 
     try:
-        opts, args = getopt.getopt(argv, "hcfrC:", ["contact", "force", "ratio", "character"])
+        opts, args = getopt.getopt(argv, "hcfrC:w:", ["contact", "force", "ratio", "character",
+                                                      "window_size"])
     except getopt.GetoptError:
         print("plot.py -c/f")
         sys.exit(2)
@@ -32,6 +34,8 @@ def main(argv):
             plot_type = 'force'
         elif opt in ("-r", "--ratio"):
             plot_type = 'ratio'
+        elif opt in ("-w", "--window_size"):
+            window_seconds = int(arg)
 
     if plot_type == 'contact':
         file_name = '/home/nash/DeepMimic/output/feet_contact_force.dat'
@@ -51,8 +55,7 @@ def main(argv):
     axs = fig.add_subplot(1, 1, 1)
 
     def contact_plot_animate(i):
-        seconds = 3
-        window_size = seconds * 30 * 20
+        window_size = window_seconds * 30 * 20
         time_step = 0.033332 / 20.0
         graph_data = open(file_name, 'r').read()
         lines = graph_data.split('\n')
