@@ -170,7 +170,8 @@ def extract_training_info(training_folders, behavior, baseline, pca, ica, eval, 
 def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_duration,
                     reduced_motion_file, imitate_exctn, intermediate_model, log_excitations,
                     log_actions, log_pose, select_k=None, com_threshold=-1.0, check_collision=False,
-                    allow_parent_collision=False):
+                    allow_parent_collision=False, no_flight_phase=False, root_rot_thrshld_x=None,
+                    root_rot_thrshld_y=None):
     # Iterate through a list of trained-model folders dictionary
     for train_dict in sorted_training_list:
         # Create an args-parser object and load the args-file
@@ -218,6 +219,20 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_
         # Add parent_collision arg
         if allow_parent_collision:
             arg_parser._table['--allow_parent_collision'] = '--allow_parent_collision ' + 'True'
+
+        # Add flight_phase arg
+        if no_flight_phase:
+            arg_parser._table['--no_flight_phase'] = '--no_flight_phase ' + 'True'
+
+        # Add root_rot-x_threshold arg
+        if root_rot_thrshld_x is not None:
+            arg_parser._table['--root_rotation_threshold_x'] = '--root_rotation_threshold_x ' + \
+                str(root_rot_thrshld_x)
+
+        # Add root_rot-y_threshold arg
+        if root_rot_thrshld_y is not None:
+            arg_parser._table['--root_rotation_threshold_y'] = '--root_rotation_threshold_y ' + \
+                str(root_rot_thrshld_y)
 
         # Add args related to evaluation
         if eval:
@@ -337,6 +352,7 @@ def usage():
           "                   [-D | --dimension] <reduced dimension> \n"
           "                   [-e | --eval]  \n"
           "                   [-f | --force_eval] \n"
+          "                   [-F | --no_flight_phase] \n"
           "                   [-h | --help] \n"
           "                   [-i | --imitate_excitations] \n"
           "                   [-k | --select_k] \n"
@@ -352,6 +368,8 @@ def usage():
           "                   [-R | --reduced] \n"
           "                   [-S | --single] \n"
           "                   [-x | --log_excitations] <output of policy network> \n"
+          "                   [-X | --root_rot_threshold_x] <rot. threshold in radians> \n"
+          "                   [-Y | --root_rot_threshold_y] <rot. threshold in radians> \n"
           )
 
 
@@ -377,6 +395,9 @@ def main(argv):
     check_collision = False
     allow_parent_collision = False
     com_threshold = -1.0
+    no_flight_phase = False
+    root_rot_thrshld_x = None
+    root_rot_thrshld_y = None
 
     playback = False
     character = None
@@ -386,13 +407,14 @@ def main(argv):
     behavior = None
 
     try:
-        opts, args = getopt.getopt(argv, "h aAbpiefxoPRScC:l:m:n:d:r:I:D:B:k:L:",
+        opts, args = getopt.getopt(argv, "h aAbpiefxoPRScFC:l:m:n:d:r:I:D:B:k:L:X:Y:",
                                    ["log_actions", "allow_parent_collision", "baseline", "pca",
                                     "imitate_excitations", "eval", "force_eval", "log_excitations",
                                     "log_pose", "playback", "reduced", "single", "check_collision",
-                                    "character=", "location=", "reduced_motion_file=", "num_evals=",
-                                    "duration=", "reward_fn=", "intermediate_model=", "dimension=",
-                                    "behavior=", "select_k=", "low_com="])
+                                    "no_flight_phase", "character=", "location=",
+                                    "reduced_motion_file=", "num_evals=", "duration=", "reward_fn=",
+                                    "intermediate_model=", "dimension=", "behavior=", "select_k=",
+                                    "low_com=", "root_rot_threshold_x=", "root_rot_threshold_y"])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -453,6 +475,12 @@ def main(argv):
             allow_parent_collision = True
         elif opt in ("-C", "--character"):
             character = arg
+        elif opt in ("-F", "--no_flight_phase"):
+            no_flight_phase = True
+        elif opt in ("-X", "--root_rot_threshold_x"):
+            root_rot_thrshld_x = float(arg)
+        elif opt in ("-Y", "--root_rot_threshold_y"):
+            root_rot_thrshld_y = float(arg)
 
     if playback:
         run_playback(playback_file=reduced_motion_file, character=character, single=single,
@@ -488,7 +516,7 @@ def main(argv):
     create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_duration,
                     reduced_motion_file, imitate_exctn, intermediate_model, log_excitations,
                     log_actions, log_pose, select_k, com_threshold, check_collision,
-                    allow_parent_collision)
+                    allow_parent_collision, no_flight_phase, root_rot_thrshld_x, root_rot_thrshld_y)
 
     # Evaluate each trailed case in the list
     for train_dict in sorted_training_list:
