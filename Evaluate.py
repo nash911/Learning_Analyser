@@ -169,9 +169,9 @@ def extract_training_info(training_folders, behavior, baseline, pca, ica, eval, 
 
 def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_duration,
                     reduced_motion_file, imitate_exctn, intermediate_model, log_excitations,
-                    log_actions, log_pose, select_k=None, com_threshold=-1.0, check_collision=False,
-                    allow_parent_collision=False, no_flight_phase=False, root_rot_thrshld_x=None,
-                    root_rot_thrshld_y=None):
+                    log_actions, log_pose, record_video=False, select_k=None, com_threshold=-1.0,
+                    check_collision=False, allow_parent_collision=False, no_flight_phase=False,
+                    root_rot_thrshld_x=None, root_rot_thrshld_y=None):
     # Iterate through a list of trained-model folders dictionary
     for train_dict in sorted_training_list:
         # Create an args-parser object and load the args-file
@@ -284,6 +284,15 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_
             except KeyError:
                 pass
 
+        # Add 'record_video' argument
+        if record_video:
+            arg_parser._table['--record_video'] = '--record_video ' + 'true'
+        else:
+            try:
+                del arg_parser._table['--record_video']
+            except KeyError:
+                pass
+
         # Add run-args-file to training dictionary
         train_dict['run_file_parser'] = arg_parser
 
@@ -367,6 +376,7 @@ def usage():
           "                   [-r | --reward_fn] <evaluation reward function (0/1/2/...)> \n"
           "                   [-R | --reduced] \n"
           "                   [-S | --single] \n"
+          "                   [-v | --record_video] \n"
           "                   [-x | --log_excitations] <output of policy network> \n"
           "                   [-X | --root_rot_threshold_x] <rot. threshold in radians> \n"
           "                   [-Y | --root_rot_threshold_y] <rot. threshold in radians> \n"
@@ -381,17 +391,21 @@ def main(argv):
     log_excitations = False
     log_actions = False
     log_pose = False
+    record_video = False
     baseline = False
     pca = False
     ica = False
+
     eval = False
     num_evals = 20
     eval_duration = 20
     eval_reward_fn = 0
     force_eval = False
+
     imitate_exctn = False
     intermediate_model = None
     select_k = None
+
     check_collision = False
     allow_parent_collision = False
     com_threshold = -1.0
@@ -407,11 +421,11 @@ def main(argv):
     behavior = None
 
     try:
-        opts, args = getopt.getopt(argv, "h aAbpiefxoPRScFC:l:m:n:d:r:I:D:B:k:L:X:Y:",
+        opts, args = getopt.getopt(argv, "h aAbpiefxoPRScFvC:l:m:n:d:r:I:D:B:k:L:X:Y:",
                                    ["log_actions", "allow_parent_collision", "baseline", "pca",
                                     "imitate_excitations", "eval", "force_eval", "log_excitations",
                                     "log_pose", "playback", "reduced", "single", "check_collision",
-                                    "no_flight_phase", "character=", "location=",
+                                    "no_flight_phase", "record_video", "character=", "location=",
                                     "reduced_motion_file=", "num_evals=", "duration=", "reward_fn=",
                                     "intermediate_model=", "dimension=", "behavior=", "select_k=",
                                     "low_com=", "root_rot_threshold_x=", "root_rot_threshold_y"])
@@ -481,6 +495,8 @@ def main(argv):
             root_rot_thrshld_x = float(arg)
         elif opt in ("-Y", "--root_rot_threshold_y"):
             root_rot_thrshld_y = float(arg)
+        elif opt in ("-v", "--record_video"):
+            record_video = True
 
     if playback:
         run_playback(playback_file=reduced_motion_file, character=character, single=single,
@@ -515,7 +531,7 @@ def main(argv):
     # Create an appropriate run-args-file for each trained case
     create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_duration,
                     reduced_motion_file, imitate_exctn, intermediate_model, log_excitations,
-                    log_actions, log_pose, select_k, com_threshold, check_collision,
+                    log_actions, log_pose, record_video, select_k, com_threshold, check_collision,
                     allow_parent_collision, no_flight_phase, root_rot_thrshld_x, root_rot_thrshld_y)
 
     # Evaluate each trailed case in the list
