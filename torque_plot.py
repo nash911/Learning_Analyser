@@ -128,7 +128,8 @@ def main(argv):
                         plot_axs(i).set(ylabel='Torque Norm.')
                     # plot_axs(i).legend(bbox_to_anchor=(0.5, -0.08*num_plots), loc='upper center',
                     #                    ncol=5, prop={'size': 12})
-                    plot_axs(i).legend(loc='center left', bbox_to_anchor=(1, 0.5), prop={'size': 12})
+                    plot_axs(i).legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                                       prop={'size': 12})
                 plot_axs(num_plots-1).set(xlabel='Time(s)')
                 fig.subplots_adjust(right=0.85)
             else:
@@ -138,7 +139,8 @@ def main(argv):
                 plot_axs(sub_plot).set(xlabel='Time(s)', ylabel='Torque Norm.')
                 plot_axs(sub_plot).legend(bbox_to_anchor=(0.5, -0.08*num_plots), loc='upper center',
                                           ncol=5, prop={'size': 12})
-                # axs[sub_plot].legend(loc='center left', bbox_to_anchor=(1, 0.5), prop={'size': 12})
+                # axs[sub_plot].legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                #                      prop={'size': 12})
                 fig.subplots_adjust(bottom=0.15)
                 sub_plot += 1
 
