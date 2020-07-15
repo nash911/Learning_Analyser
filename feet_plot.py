@@ -39,7 +39,7 @@ def main(argv):
 
     if plot_type == 'contact':
         file_name = '/home/nash/DeepMimic/output/feet_contact_force.dat'
-        if character == 'salamander':
+        if character in ['salamander', 'cheetah']:
             title = 'Feet Contact Plot'
         elif character == 'snake':
             title = 'Spine Contact Plot'
@@ -54,7 +54,7 @@ def main(argv):
     fig.suptitle(title, fontsize=20)
     axs = fig.add_subplot(1, 1, 1)
 
-    def contact_plot_animate(i):
+    def contact_plot_salamander_animate(i):
         window_size = window_seconds * 30 * 20
         time_step = 0.033332 / 20.0
         graph_data = open(file_name, 'r').read()
@@ -124,6 +124,42 @@ def main(argv):
         axs.set_ylim(0.5, num_plots+1)
         axs.legend(bbox_to_anchor=(0.5, -0.125), loc='upper center', prop={'size': 12}, ncol=5)
         fig.subplots_adjust(bottom=0.2)
+
+    def contact_plot_cheetah_animate(i):
+        window_size = window_seconds * 30 * 20
+        time_step = 0.033332 / 20.0
+        graph_data = open(file_name, 'r').read()
+        lines = graph_data.split('\n')
+
+        t = list()
+        plot_data = np.zeros((window_size, 4))
+
+        for i, line in enumerate(lines[-window_size:]):
+            if len(line) > 1 and not line[0] == '#':
+                f_l, f_r, h_l, h_r = line.split(' ')
+                plot_data[i] = np.array([float(f_l), float(f_r), float(h_l), float(h_r)],
+                                        dtype=bool)
+                t.append(float(i) * time_step)
+        plot_data *= np.array([4, 3, 2, 1], dtype=np.int)
+
+        axs.clear()
+        feet = ('Hinde-Right', 'Hinde-Left', 'Front-Right', 'Front-Left')
+        y_pos = np.arange(1, len(feet) + 1)
+        axs.set_yticks(y_pos)
+        axs.set_yticklabels(feet)
+
+        axs.plot(t[-window_size:], plot_data[:len(t), 0].tolist(), '.', color='brown',
+                 label='Front-Left')
+        axs.plot(t[-window_size:], plot_data[:len(t), 1].tolist(), '.', color='salmon',
+                 label='Front-Right')
+        axs.plot(t[-window_size:], plot_data[:len(t), 2].tolist(), '.', color='grey',
+                 label='Hinde-Left')
+        axs.plot(t[-window_size:], plot_data[:len(t), 3].tolist(), '.', color='black',
+                 label='Hinde-Right')
+
+        axs.set(xlabel='Time(s)', ylabel='Feet')
+        axs.set_ylim(0.5, 5)
+        axs.legend(loc='upper right')
 
     def force_plot_animate(i):
         seconds = 5
@@ -207,9 +243,11 @@ def main(argv):
 
     if plot_type == 'contact':
         if character == 'salamander':
-            _ = animation.FuncAnimation(fig, contact_plot_animate, interval=100)
+            _ = animation.FuncAnimation(fig, contact_plot_salamander_animate, interval=100)
         elif character == 'snake':
             _ = animation.FuncAnimation(fig, contact_plot_snake_animate, interval=100)
+        elif character == 'cheetah':
+            _ = animation.FuncAnimation(fig, contact_plot_cheetah_animate, interval=100)
     elif plot_type == 'force':
         _ = animation.FuncAnimation(fig, force_plot_animate, interval=100)
     elif plot_type == 'ratio':
