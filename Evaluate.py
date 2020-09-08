@@ -4,6 +4,7 @@ import os
 import re
 from collections import OrderedDict
 import subprocess
+import multiprocessing
 
 from analysis_arg_parser import AnlyzArgParser
 
@@ -299,7 +300,11 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_
     return
 
 
-def run_playback(playback_file=None, character=None, single=False, reduced_motion=None,
+def work(cmd):
+    return subprocess.call(cmd, shell=True)
+
+
+def run_playback(playback_file=None, character=None, single=False, reduced_motion=False,
                  dimension=None, behavior=None):
     playback_dict = OrderedDict()
     playback_dict['scene'] = "kin_char"
@@ -313,13 +318,16 @@ def run_playback(playback_file=None, character=None, single=False, reduced_motio
 
     if playback_file is not None:
         playback_dict['motion_file'] = playback_file
+        title = 'Playback'
     elif reduced_motion:
         motion_file = "/home/nash/Dropbox/Clemson/Projects/quat_conversions/pca/Output/"
         if dimension is None:
             playback_dict['motion_file'] = motion_file + 'pca_traj.txt'
+            title = 'Playback-Reduced Motion'
         elif single:
             playback_dict['motion_file'] = motion_file + 'single_coactivations/' + \
                 ('pca_single_traj_%d.txt' % dimension)
+            title = 'Coactivation-%d' % dimension
         else:
             print("Error: For reduced-motion playback, set single flag along with dimension using:"
                   "[-S | --single]")
@@ -338,16 +346,20 @@ def run_playback(playback_file=None, character=None, single=False, reduced_motio
         sys.exit()
     else:
         # Write playback-file on to a file
-        playback_file = "/home/nash/Dropbox/Clemson/Projects/Learning_Analyser/playback_file.txt"
+        if dimension is None:
+            playback_file = "/home/nash/Dropbox/Clemson/Projects/Learning_Analyser/Output/" + \
+                            "pb_file.txt"
+        else:
+            playback_file = "/home/nash/Dropbox/Clemson/Projects/Learning_Analyser/Output/" + \
+                            "pb_file-%d.txt" % dimension
         with open(playback_file, 'w') as fp:
             for k, v in playback_dict.items():
                 fp.write('--' + k + ' ' + v + '\n')
 
         # Execute command to run the trained case
-        cmd = 'python DeepMimic.py --arg_file ' + playback_file
-        subprocess.call(cmd, shell=True)
+        cmd = 'python DeepMimic.py --arg_file ' + playback_file + ' --title ' + title
 
-    return
+    return cmd
 
 
 def usage():
@@ -358,7 +370,7 @@ def usage():
           "                   [-c | --check_collision]  \n"
           "                   [-C | --character]  \n"
           "                   [-d | --duration] <evaluation duration> \n"
-          "                   [-D | --dimension] <reduced dimension> \n"
+          "                   [-D | --dimension] <reduced dimension>/<list of reduced dims> \n"
           "                   [-e | --eval]  \n"
           "                   [-f | --force_eval] \n"
           "                   [-F | --no_flight_phase] \n"
@@ -476,7 +488,10 @@ def main(argv):
         elif opt in ("-S", "--single"):
             single = True
         elif opt in ("-D", "--dimension"):
-            dimension = int(arg)
+            try:
+                dimension = int(arg)
+            except ValueError:
+                dimension = list(map(int, arg.strip('[]').split(',')))
         elif opt in ("-B", "--behavior"):
             behavior = arg
         elif opt in ("-k", "--select_k"):
@@ -499,8 +514,23 @@ def main(argv):
             record_video = True
 
     if playback:
-        run_playback(playback_file=reduced_motion_file, character=character, single=single,
-                     reduced_motion=reduced_motion, dimension=dimension, behavior=behavior)
+        cmd = list()
+        if type(dimension) == list:
+            if len(dimension) == 1:
+                dimension = list(range(1, dimension[0]+1))
+
+            count = len(dimension)
+            pool = multiprocessing.Pool(processes=count)
+            for d in dimension:
+                cmd.append(run_playback(playback_file=reduced_motion_file, character=character,
+                                        single=single, reduced_motion=reduced_motion, dimension=d,
+                                        behavior=behavior))
+        else:
+            pool = multiprocessing.Pool(processes=1)
+            cmd.append(run_playback(playback_file=reduced_motion_file, character=character,
+                                    single=single, reduced_motion=reduced_motion,
+                                    dimension=dimension, behavior=behavior))
+        pool.map(work, cmd)
         return
 
     if all:
