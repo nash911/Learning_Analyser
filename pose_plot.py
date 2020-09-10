@@ -51,40 +51,41 @@ def main(argv):
     joint_names = [list(), list(), list(), list()]
     colors = [list(), list(), list(), list()]
     if X:
-        joint_inds.append(((np.array([13, 14, 15, 16]) - 1) * 3) + 0)
+        joint_inds.append(((np.array([16, 15, 14, 13]) - 1) * 3) + 0)
 
-        joint_names[0].append('Front.R-X')
-        joint_names[1].append('Front.L-X')
-        joint_names[2].append('Hind.R-X')
-        joint_names[3].append('Hind.L-X')
+        joint_names[0].append('Hind.L-X')
+        joint_names[1].append('Hind.R-X')
+        joint_names[2].append('Front.L-X')
+        joint_names[3].append('Front.R-X')
 
-        colors[0].append('lime')
-        colors[1].append('slateblue')
-        colors[2].append('tomato')
-        colors[3].append('yellow')
+        colors[0].append('yellow')
+        colors[1].append('tomato')
+        colors[2].append('slateblue')
+        colors[3].append('lime')
     if Y:
-        joint_inds.append(((np.array([13, 14, 15, 16]) - 1) * 3) + 1)
+        joint_inds.append(((np.array([16, 15, 14, 13]) - 1) * 3) + 1)
 
-        joint_names[0].append('Front.R-Y')
-        joint_names[1].append('Front.L-Y')
-        joint_names[2].append('Hind.R-Y')
-        joint_names[3].append('Hind.L-Y')
+        joint_names[0].append('Hind.L-Y')
+        joint_names[1].append('Hind.R-Y')
+        joint_names[2].append('Front.L-Y')
+        joint_names[3].append('Front.R-Y')
 
-        colors[0].append('green')
-        colors[1].append('blue')
-        colors[2].append('red')
-        colors[3].append('gold')
+        colors[0].append('gold')
+        colors[1].append('red')
+        colors[2].append('blue')
+        colors[3].append('green')
     if Z:
-        joint_inds.append(((np.array([13, 14, 15, 16]) - 1) * 3) + 2)
-        joint_names[0].append('Front.R-Z')
-        joint_names[1].append('Front.L-Z')
-        joint_names[2].append('Hind.R-Z')
-        joint_names[3].append('Hind.L-Z')
+        joint_inds.append(((np.array([16, 15, 14, 13]) - 1) * 3) + 2)
 
-        colors[0].append('mediumseagreen')
-        colors[1].append('navy')
-        colors[2].append('firebrick')
-        colors[3].append('orange')
+        joint_names[0].append('Hind.L-Z')
+        joint_names[1].append('Hind.R-Z')
+        joint_names[2].append('Front.L-Z')
+        joint_names[3].append('Front.R-Z')
+
+        colors[0].append('orange')
+        colors[1].append('firebrick')
+        colors[2].append('navy')
+        colors[3].append('mediumseagreen')
 
     joint_inds = np.transpose(np.array(joint_inds))
 
