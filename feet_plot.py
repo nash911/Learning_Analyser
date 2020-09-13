@@ -1,11 +1,15 @@
 import sys
 import getopt
 import numpy as np
+import os
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib import style
 
 style.use('seaborn')
+
+prev_file_mod_time = 0
+file_time_counter = 0
 
 
 def main(argv):
@@ -19,12 +23,12 @@ def main(argv):
         opts, args = getopt.getopt(argv, "hcfrC:w:", ["contact", "force", "ratio", "character",
                                                       "window_size"])
     except getopt.GetoptError:
-        print("plot.py -c/f")
+        print("plot.py -C [--character] -c/f/r [--contact/--force/--ratio] -w [--window_size] ")
         sys.exit(2)
 
     for opt, arg in opts:
         if opt == '-h':
-            print("plot.py -c/f")
+            print("plot.py -C [--character] -c/f/r [--contact/--force/--ratio] -w [--window_size] ")
             sys.exit()
         elif opt in ("-c", "--contact"):
             plot_type = 'contact'
@@ -55,6 +59,19 @@ def main(argv):
     axs = fig.add_subplot(1, 1, 1)
 
     def contact_plot_salamander_animate(i):
+        global prev_file_mod_time
+        global file_time_counter
+
+        file_mod_time = os.stat(file_name)[8]
+        if file_mod_time == prev_file_mod_time:
+            file_time_counter += 1
+        else:
+            file_time_counter = 0
+        prev_file_mod_time = file_mod_time
+
+        if file_time_counter > 10:
+            return
+
         window_size = window_seconds * 30 * 20
         time_step = 0.033332 / 20.0
         graph_data = open(file_name, 'r').read()
@@ -91,6 +108,19 @@ def main(argv):
         axs.legend(loc='upper right')
 
     def contact_plot_snake_animate(i):
+        global prev_file_mod_time
+        global file_time_counter
+
+        file_mod_time = os.stat(file_name)[8]
+        if file_mod_time == prev_file_mod_time:
+            file_time_counter += 1
+        else:
+            file_time_counter = 0
+        prev_file_mod_time = file_mod_time
+
+        if file_time_counter > 10:
+            return
+
         colors = ['gold', 'red', 'blue', 'green', 'orange', 'black', 'purple', 'cyan', 'grey',
                   'violet', 'indigo']
         seconds = 3
@@ -126,6 +156,19 @@ def main(argv):
         fig.subplots_adjust(bottom=0.2)
 
     def contact_plot_cheetah_animate(i):
+        global prev_file_mod_time
+        global file_time_counter
+
+        file_mod_time = os.stat(file_name)[8]
+        if file_mod_time == prev_file_mod_time:
+            file_time_counter += 1
+        else:
+            file_time_counter = 0
+        prev_file_mod_time = file_mod_time
+
+        if file_time_counter > 10:
+            return
+
         window_size = window_seconds * 30 * 20
         time_step = 0.033332 / 20.0
         graph_data = open(file_name, 'r').read()
@@ -162,6 +205,19 @@ def main(argv):
         axs.legend(loc='upper right')
 
     def force_plot_animate(i):
+        global prev_file_mod_time
+        global file_time_counter
+
+        file_mod_time = os.stat(file_name)[8]
+        if file_mod_time == prev_file_mod_time:
+            file_time_counter += 1
+        else:
+            file_time_counter = 0
+        prev_file_mod_time = file_mod_time
+
+        if file_time_counter > 10:
+            return
+
         seconds = 5
         window_size = seconds * 30
         time_step = 0.033332
@@ -193,6 +249,19 @@ def main(argv):
         fig.subplots_adjust(bottom=0.2)
 
     def force_ratio_plot_animate(i):
+        global prev_file_mod_time
+        global file_time_counter
+
+        file_mod_time = os.stat(file_name)[8]
+        if file_mod_time == prev_file_mod_time:
+            file_time_counter += 1
+        else:
+            file_time_counter = 0
+        prev_file_mod_time = file_mod_time
+
+        if file_time_counter > 10:
+            return
+
         seconds = 5
         window_size = seconds * 30
         time_step = 0.033332

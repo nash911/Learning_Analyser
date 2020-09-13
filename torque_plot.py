@@ -1,11 +1,15 @@
 import sys
 import getopt
 import numpy as np
+import os
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib import style
 
 style.use('seaborn')
+
+prev_file_mod_time = 0
+file_time_counter = 0
 
 
 def main(argv):
@@ -21,7 +25,9 @@ def main(argv):
     # colors = ['gold', 'violet', 'blue', 'green', 'salmon', 'black', 'purple', 'cyan', 'red',
     #           'grey', 'indigo', 'lavender']
     colors = ['red', 'blue', 'green', 'orange', 'black', 'purple', 'cyan', 'grey', 'violet', 'gold',
-              'indigo']
+              'indigo', 'brown', 'pink', 'magenta', 'tan', 'darkgreen', 'lavender',
+              'turquoise', 'darkblue', 'beige', 'salmon', 'olive', 'hotpink',
+              'darkred', 'sand', 'armygreen', 'darkgrey', 'crimson', 'eggplant', 'coral']
 
     file_name = '/home/nash/DeepMimic/output/avg_torque.dat'
 
@@ -81,6 +87,19 @@ def main(argv):
         return axs[sub_plot] if num_plots > 1 else axs
 
     def animate(i):
+        global prev_file_mod_time
+        global file_time_counter
+
+        file_mod_time = os.stat(file_name)[8]
+        if file_mod_time == prev_file_mod_time:
+            file_time_counter += 1
+        else:
+            file_time_counter = 0
+        prev_file_mod_time = file_mod_time
+
+        if file_time_counter > 10:
+            return
+
         window_size = 30 * window_seconds
         time_step = 0.033332
         graph_data = open(file_name, 'r').read()

@@ -1,11 +1,15 @@
 import sys
 import getopt
 import numpy as np
+import os
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib import style
 
 style.use('seaborn')
+
+prev_file_mod_time = 0
+file_time_counter = 0
 
 
 def main(argv):
@@ -101,6 +105,19 @@ def main(argv):
         return axs[sub_plot] if num_plots > 1 else axs
 
     def animate(i):
+        global prev_file_mod_time
+        global file_time_counter
+
+        file_mod_time = os.stat(file_name)[8]
+        if file_mod_time == prev_file_mod_time:
+            file_time_counter += 1
+        else:
+            file_time_counter = 0
+        prev_file_mod_time = file_mod_time
+
+        if file_time_counter > 10:
+            return
+
         window_size = 30 * 20 * window_seconds
         time_step = 0.033332/20.0
         graph_data = open(file_name, 'r').read()
