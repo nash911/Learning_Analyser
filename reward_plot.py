@@ -20,6 +20,8 @@ def main(argv):
     part_rot = False
     residual = False
     window_seconds = 5
+    window_size = window_seconds * 30
+    time_step = 0.033332
 
     try:
         opts, args = getopt.getopt(argv, "hflprRtw:", ["root_f_vel", "root_l_vel", "part_rot",
@@ -82,8 +84,6 @@ def main(argv):
         if file_time_counter > 10:
             return
 
-        window_size = window_seconds * 30
-        time_step = 0.033332
         graph_data = open(file_name, 'r').read()
         lines = graph_data.split('\n')
         data_dim = len(lines[1].split(' '))

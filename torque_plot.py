@@ -18,6 +18,8 @@ def main(argv):
     trq_rew = False
     joint_rew = False
     window_seconds = 5
+    window_size = 30 * window_seconds
+    time_step = 0.033332
 
     indiv_trq_only = False
     joint_rew_only = False
@@ -100,8 +102,6 @@ def main(argv):
         if file_time_counter > 10:
             return
 
-        window_size = 30 * window_seconds
-        time_step = 0.033332
         graph_data = open(file_name, 'r').read()
         lines = graph_data.split('\n')
         t = list()

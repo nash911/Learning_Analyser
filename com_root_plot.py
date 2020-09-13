@@ -17,21 +17,20 @@ def main(argv):
     var = 'pos'
     char = None
     window_seconds = 10
-
-    # prev_file_mod_time = 0
-    # file_time_counter = 0
+    window_size = 30 * window_seconds
+    time_step = 0.033332
 
     try:
-        opts, args = getopt.getopt(argv, "hcrpvaogkstw:", ["com", "root", "pos", "vel", "acc",
-                                                           "rot", "ang_vel" "kin", "sim", "torque",
-                                                           "window_size"])
+        opts, args = getopt.getopt(argv, "hcrpvaogksw:", ["com", "root", "pos", "vel", "acc",
+                                                          "rot", "ang_vel" "kin", "sim",
+                                                          "window_size"])
     except getopt.GetoptError:
-        print("plot.py -c/r -p/v/a/o/g/t -k/s")
+        print("plot.py -c/r -p/v/a/o/g -k/s")
         sys.exit(2)
 
     for opt, arg in opts:
         if opt == '-h':
-            print("plot.py -c/r -p/v/a/o/g/t -k/s")
+            print("plot.py -c/r -p/v/a/o/g -k/s")
             sys.exit()
         elif opt in ("-c", "--com"):
             obj = 'com'
@@ -51,8 +50,6 @@ def main(argv):
             char = 'kin'
         elif opt in ("-s", "--sim"):
             char = 'sim'
-        elif opt in ("-t", "--torque"):
-            var = 'torque'
         elif opt in ("-w", "--window_size"):
             window_seconds = int(arg)
 
@@ -101,24 +98,16 @@ def main(argv):
         legend_x = 'AngVel-X'
         legend_y = 'AngVel-Y'
         legend_z = 'AngVel-Z'
-    elif var == 'torque':
-        file_name = '/home/nash/DeepMimic/output/avg_torque.dat'
-        y_label = ['Torque', 'Norm. Reward']
-        title_1 = ''
-        title_2 = ''
-        title_3 = 'Average Torque Plot'
-        legend_avg_torque = 'Avg. Torque'
-        legend_torque_reward = 'Torque Reward'
     legend_speed = 'Speed-XZ'
 
     graph_data = open(file_name, 'r').read()
     lns = graph_data.split('\n')
     num_data = len(lns[1].split(' '))
 
-    if num_data in [2, 8]:
-        num_plots = 2
-    elif num_data == 6:
+    if num_data == 6 or var == 'acc':
         num_plots = 1
+    elif num_data == 8:
+        num_plots = 2
     else:
         print("Error")
 
@@ -139,8 +128,6 @@ def main(argv):
         if file_time_counter > 10:
             return
 
-        window_size = 30 * window_seconds
-        time_step = 0.033332
         graph_data = open(file_name, 'r').read()
         lines = graph_data.split('\n')
         t = list()
@@ -154,40 +141,32 @@ def main(argv):
         k_z = list()
         k_speed = list()
 
-        avg_tau = list()
-        tau_reward = list()
-
         for i, line in enumerate(lines[-window_size:]):
             if len(line) > 1 and not line[0] == '#':
                 try:
-                    sim_x, sim_y, sim_z, kin_x, kin_y, kin_z, = line.split(' ')
+                    sim_x, sim_y, sim_z, kin_x, kin_y, kin_z, sim_speed, kin_speed = line.split(' ')
                 except ValueError:
-                    try:
-                        sim_x, sim_y, sim_z, kin_x, kin_y, kin_z, sim_speed, kin_speed = \
-                            line.split(' ')
-                    except ValueError:
-                        avg_torque, torque_reward = line.split(' ')
+                    sim_x, sim_y, sim_z, kin_x, kin_y, kin_z, = line.split(' ')
 
                 t.append(float(i) * time_step)
                 if char == 'sim':
                     s_x.append(float(sim_x))
                     s_y.append(float(sim_y))
                     s_z.append(float(sim_z))
-                    try:
-                        s_speed.append(float(sim_speed))
-                    except UnboundLocalError:
-                        pass
+                    if var != 'acc':
+                        try:
+                            s_speed.append(float(sim_speed))
+                        except UnboundLocalError:
+                            pass
                 elif char == 'kin':
                     k_x.append(float(kin_x))
                     k_y.append(float(kin_y))
                     k_z.append(float(kin_z))
-                    try:
-                        k_speed.append(float(kin_speed))
-                    except UnboundLocalError:
-                        pass
-                else:
-                    avg_tau.append(float(avg_torque))
-                    tau_reward.append(float(torque_reward))
+                    if var != 'acc':
+                        try:
+                            k_speed.append(float(kin_speed))
+                        except UnboundLocalError:
+                            pass
 
         if var == 'acc':
             if char == 'sim':
@@ -228,12 +207,6 @@ def main(argv):
             if len(k_speed) > 0:
                 (axs[1] if num_plots > 1 else axs).plot(t[-window_size:], k_speed[-window_size:],
                                                         label=legend_speed, color='purple')
-        else:
-            axs[0].plot(t[-window_size:], avg_tau[-window_size:], label=legend_avg_torque,
-                        color='red')
-            axs[1].plot(t[-window_size:], tau_reward[-window_size:], label=legend_torque_reward,
-                        color='green')
-            axs[1].set_yticks(np.arange(0, 1.1, step=0.2))
 
         if num_plots > 1:
             for ax, y_lab in zip(axs, y_label):

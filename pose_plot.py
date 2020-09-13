@@ -18,6 +18,8 @@ def main(argv):
     Z = False
     indiv_pos = False
     window_seconds = 5
+    window_size = 30 * 20 * window_seconds
+    time_step = 0.033332/20.0
 
     file_name = '/home/nash/DeepMimic/output/pose_sim.dat'
 
@@ -118,8 +120,6 @@ def main(argv):
         if file_time_counter > 10:
             return
 
-        window_size = 30 * 20 * window_seconds
-        time_step = 0.033332/20.0
         graph_data = open(file_name, 'r').read()
         lines = graph_data.split('\n')
         t = list()
