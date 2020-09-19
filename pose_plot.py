@@ -18,8 +18,6 @@ def main(argv):
     Z = False
     indiv_pos = False
     window_seconds = 5
-    window_size = 30 * 20 * window_seconds
-    time_step = 0.033332/20.0
 
     file_name = '/home/nash/DeepMimic/output/pose_sim.dat'
 
@@ -48,6 +46,9 @@ def main(argv):
         print("Error: Specfiy atleast one joint axis (x/y/z) to plot.\n"
               "Use flags [-x | --X] and/or [-y | --Y] and/or [-z | --Z]")
         sys.exit()
+
+    window_size = 30 * 20 * window_seconds
+    time_step = 0.033332/20.0
 
     graph_data = open(file_name, 'r').read()
     lns = graph_data.split('\n')

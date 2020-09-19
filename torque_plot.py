@@ -18,8 +18,6 @@ def main(argv):
     trq_rew = False
     joint_rew = False
     window_seconds = 5
-    window_size = 30 * window_seconds
-    time_step = 0.033332
 
     indiv_trq_only = False
     joint_rew_only = False
@@ -63,6 +61,9 @@ def main(argv):
 
     if not (avg_trq or trq_rew or indiv_trq) and joint_rew:
         joint_rew_only = True
+
+    window_size = 30 * window_seconds
+    time_step = 0.033332
 
     graph_data = open(file_name, 'r').read()
     lns = graph_data.split('\n')
