@@ -169,10 +169,10 @@ def extract_training_info(training_folders, behavior, baseline, pca, ica, eval, 
 
 
 def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_duration,
-                    reduced_motion_file, imitate_exctn, intermediate_model, log_excitations,
-                    log_actions, log_pose, record_video=False, select_k=None, com_threshold=-1.0,
-                    check_collision=False, allow_parent_collision=False, no_flight_phase=False,
-                    root_rot_thrshld_x=None, root_rot_thrshld_y=None):
+                    reduced_motion_file, character_file, imitate_exctn, intermediate_model,
+                    log_excitations, log_actions, log_pose, record_video=False, select_k=None,
+                    com_threshold=-1.0, check_collision=False, allow_parent_collision=False,
+                    no_flight_phase=False, root_rot_thrshld_x=None, root_rot_thrshld_y=None):
     # Iterate through a list of trained-model folders dictionary
     for train_dict in sorted_training_list:
         # Create an args-parser object and load the args-file
@@ -203,6 +203,10 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_
             else:
                 arg_parser._table['--reduced_motion_file'] = \
                     '--reduced_motion_file ' + reduced_motion_file
+
+        # Add character file
+        if character_file is not None:
+            arg_parser._table['--character_files'] = '--character_files ' + character_file
 
         # Add select_k arg
         if select_k is not None:
@@ -381,6 +385,7 @@ def usage():
           "                   [-l | --location] <input folder location> \n"
           "                   [-L | --low_com] <COM height threshold> \n"
           "                   [-m | --reduced_motion_file] <reduced motion file> \n"
+          "                   [-M | --character_model_file] <character model file> \n"
           "                   [-n | --num_evals] <no. of evaluations> \n"
           "                   [-o | --log_pose] \n"
           "                   [-p | --pca] \n"
@@ -398,6 +403,7 @@ def usage():
 def main(argv):
     run_file = 'run_args_file.txt'
     reduced_motion_file = None
+    character_file = None
     behavior_folder = None
     all = True
     log_excitations = False
@@ -433,14 +439,15 @@ def main(argv):
     behavior = None
 
     try:
-        opts, args = getopt.getopt(argv, "h aAbpiefxoPRScFvC:l:m:n:d:r:I:D:B:k:L:X:Y:",
+        opts, args = getopt.getopt(argv, "h aAbpiefxoPRScFvC:l:m:M:n:d:r:I:D:B:k:L:X:Y:",
                                    ["log_actions", "allow_parent_collision", "baseline", "pca",
                                     "imitate_excitations", "eval", "force_eval", "log_excitations",
                                     "log_pose", "playback", "reduced", "single", "check_collision",
                                     "no_flight_phase", "record_video", "character=", "location=",
-                                    "reduced_motion_file=", "num_evals=", "duration=", "reward_fn=",
-                                    "intermediate_model=", "dimension=", "behavior=", "select_k=",
-                                    "low_com=", "root_rot_threshold_x=", "root_rot_threshold_y"])
+                                    "reduced_motion_file=", "character_model_file=", "num_evals=",
+                                    "duration=", "reward_fn=", "intermediate_model=", "dimension=",
+                                    "behavior=", "select_k=", "low_com=", "root_rot_threshold_x=",
+                                    "root_rot_threshold_y"])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -479,6 +486,8 @@ def main(argv):
             eval_duration = float(arg)
         elif opt in ("-m", "--reduced_motion_file"):
             reduced_motion_file = arg
+        elif opt in ("-M", "--character_model_file"):
+            character_file = arg
         elif opt in ("-I", "--intermediate_model"):
             intermediate_model = int(arg)
         elif opt in ("-P", "--playback"):
@@ -544,6 +553,9 @@ def main(argv):
         print("Warning: Both Actions and Activations are set to be logged!")
         sys.exit()
 
+    if character_file == 'self':
+        character_file = behavior_folder + 'salamanderV0.txt'
+
     # Extract individual training folders
     training_folders = []
     behavior, training_folders = \
@@ -560,9 +572,10 @@ def main(argv):
 
     # Create an appropriate run-args-file for each trained case
     create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_duration,
-                    reduced_motion_file, imitate_exctn, intermediate_model, log_excitations,
-                    log_actions, log_pose, record_video, select_k, com_threshold, check_collision,
-                    allow_parent_collision, no_flight_phase, root_rot_thrshld_x, root_rot_thrshld_y)
+                    reduced_motion_file, character_file, imitate_exctn, intermediate_model,
+                    log_excitations, log_actions, log_pose, record_video, select_k, com_threshold,
+                    check_collision, allow_parent_collision, no_flight_phase, root_rot_thrshld_x,
+                    root_rot_thrshld_y)
 
     # Evaluate each trailed case in the list
     for train_dict in sorted_training_list:
