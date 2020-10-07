@@ -21,11 +21,15 @@ def usage():
           "                        [-r | --root] \n"
           "                        [-p | --pos] \n"
           "                        [-v | --vel] \n"
+          "                        [-m | --mean_vel] \n"
           "                        [-a | --acc] \n"
           "                        [-e | --speed] \n"
           "                        [-o | --rot] \n"
           "                        [-g | --ang_vel] \n"
           "                        [-h | --help] \n"
+          "                        [-x | --X] \n"
+          "                        [-y | --Y] \n"
+          "                        [-z | --Z] \n"
           "                        [-w | --window_size] <plot window size in seconds> \n"
           )
 
@@ -35,6 +39,11 @@ def main(argv):
     root = False
     kin = False
     sim = False
+    vel = False
+    mean = False
+    X = True
+    Y = True
+    Z = True
     window_seconds = 10
 
     char = list()
@@ -43,9 +52,10 @@ def main(argv):
     plot_combos = list()
 
     try:
-        opts, args = getopt.getopt(argv, "hcrpvaeogksw:", ["com", "root", "pos", "vel", "acc",
-                                                           "speed", "rot", "ang_vel" "kin", "sim",
-                                                           "window_size"])
+        opts, args = getopt.getopt(argv, "hcrpvaeogksmxyzw:", ["com", "root", "pos", "vel", "acc",
+                                                               "speed", "rot", "ang_vel" "kin",
+                                                               "sim", "mean", "X", "Y",
+                                                               "Z", "window_size"])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -64,6 +74,7 @@ def main(argv):
             var.append('pos')
         elif opt in ("-v", "--vel"):
             var.append('vel')
+            vel = True
         elif opt in ("-a", "--acc"):
             var.append('acc')
         elif opt in ("-e", "--speed"):
@@ -72,12 +83,21 @@ def main(argv):
             var.append('rot')
         elif opt in ("-g", "--ang_vel"):
             var.append('ang_vel')
+        elif opt in ("-m", "--mean_vel"):
+            var.append('mean_vel')
+            mean = True
         elif opt in ("-k", "--kin"):
             kin = True
             char.append('kin')
         elif opt in ("-s", "--sim"):
             sim = True
             char.append('sim')
+        elif opt in ("-x", "--X"):
+            X = False
+        elif opt in ("-y", "--Y"):
+            Y = False
+        elif opt in ("-z", "--Z"):
+            Z = False
         elif opt in ("-w", "--window_size"):
             window_seconds = int(arg)
 
@@ -115,42 +135,49 @@ def main(argv):
     var_dict['pos'] = {'file_name': '/home/nash/DeepMimic/output/%s_pos.dat',
                        'y_label': 'Pos. (m)',
                        'subtitle': '%s-%s-Position Plot',
-                       'legend_x': 'Pos-X',
-                       'legend_y': 'Pos-Y',
-                       'legend_z': 'Pos-Z'}
+                       'legend_x': '$\mathit{p}_x$',
+                       'legend_y': '$\mathit{p}_y$',
+                       'legend_z': '$\mathit{p}_z$'}
 
     var_dict['vel'] = {'file_name': '/home/nash/DeepMimic/output/%s_vel.dat',
                        'y_label': 'Vel. (m/s)',
                        'subtitle': '%s-%s-Velocity Plot',
-                       'legend_x': 'Vel-X',
-                       'legend_y': 'Vel-Y',
-                       'legend_z': 'Vel-Z'}
+                       'legend_x': '$\mathit{v}_x$',
+                       'legend_y': '$\mathit{v}_y$',
+                       'legend_z': '$\mathit{v}_z$'}
+
+    var_dict['mean_vel'] = {'file_name': '/home/nash/DeepMimic/output/avg_%s_vel.dat',
+                            'y_label': 'Vel. (m/s)',
+                            'subtitle': '%s-%s-Velocity Plot',
+                            'legend_x': '$\mathit{\overline{v}}_x$',
+                            'legend_y': '$\mathit{\overline{v}}_y$',
+                            'legend_z': '$\mathit{\overline{v}}_z$'}
 
     var_dict['acc'] = {'file_name': '/home/nash/DeepMimic/output/%s_vel.dat',
                        'y_label': 'Acc. (m/s^2)',
                        'subtitle': '%s-%s-Acceleration Plot',
-                       'legend_x': 'Acc-X',
-                       'legend_y': 'Acc-Y',
-                       'legend_z': 'Acc-Z'}
+                       'legend_x': '$\mathit{a}_x$',
+                       'legend_y': '$\mathit{a}_y$',
+                       'legend_z': '$\mathit{a}_z$'}
 
     var_dict['speed'] = {'file_name': '/home/nash/DeepMimic/output/%s_vel.dat',
                          'y_label': 'Speed (m/s)',
                          'subtitle': '%s-%s-Speed Plot',
-                         'legend_speed': 'Speed-XZ'}
+                         'legend_speed': '$\mathbf{v}$'}
 
     var_dict['rot'] = {'file_name': '/home/nash/DeepMimic/output/%s_rot.dat',
                        'y_label': 'Ang. (rad)',
                        'subtitle': '%s-%s-Rotation Plot',
-                       'legend_x': 'Rot-X',
-                       'legend_y': 'Rot-Y',
-                       'legend_z': 'Rot-Z'}
+                       'legend_x': '$\mathit{\Theta}_x$',
+                       'legend_y': '$\mathit{\Theta}_y$',
+                       'legend_z': '$\mathit{\Theta}_z$'}
 
     var_dict['ang_vel'] = {'file_name': '/home/nash/DeepMimic/output/%s_ang_vel.dat',
                            'y_label': 'Ang. Vel. (rad/s)',
                            'subtitle': '%s-%s-Angular Velocity Plot',
-                           'legend_x': 'AngVel-X',
-                           'legend_y': 'AngVel-Y',
-                           'legend_z': 'AngVel-Z'}
+                           'legend_x': '$\mathit{\omega}_x$',
+                           'legend_y': '$\mathit{\omega}_y$',
+                           'legend_z': '$\mathit{\omega}_z$'}
 
     for c, v, o in product(char, var, obj):
         if o == 'com' and v in ['rot', 'ang_vel']:
@@ -162,6 +189,9 @@ def main(argv):
     time_step = 0.033332
 
     num_plots = len(plot_combos)
+    if mean and vel:
+        num_plots -= 1
+
     if num_plots > 0:
         fig, axs = plt.subplots(num_plots, sharey=False, sharex=True)
         fig.suptitle((title_1 + title_2 + 'Plot(s)'), fontsize=20)
@@ -199,7 +229,11 @@ def main(argv):
                 try:
                     sim_x, sim_y, sim_z, kin_x, kin_y, kin_z, sim_speed, kin_speed = line.split(' ')
                 except ValueError:
-                    sim_x, sim_y, sim_z, kin_x, kin_y, kin_z, = line.split(' ')
+                    try:
+                        sim_x, sim_y, sim_z, kin_x, kin_y, kin_z, = line.split(' ')
+                    except ValueError:
+                        sim_x, sim_y, sim_z = line.split(' ')
+                        kin_x = kin_y = kin_z = 0
 
                 t.append(float(i) * time_step)
                 if plot_dict['char'] == 'sim':
@@ -251,22 +285,56 @@ def main(argv):
         else:
             axs.clear()
 
+        common_plot_indx = None
         for i, (p_c, p_d) in enumerate(zip(plot_combos, plot_data)):
             if p_c['var'] == 'speed':
                 plot_axs(i).plot(p_d['t'][-window_size:], p_d['speed'][-window_size:],
                                  label=p_c['plot_vars']['legend_speed'])
+            elif p_c['var'] == 'mean_vel':
+                if common_plot_indx is None:
+                    common_plot_indx = indx = i
+                else:
+                    indx = common_plot_indx
+
+                if X:
+                    plot_axs(indx).plot(p_d['t'][-window_size:], p_d['x'][-window_size:],
+                                        label=p_c['plot_vars']['legend_x'], color='purple')
+                if Y:
+                    plot_axs(indx).plot(p_d['t'][-window_size:], p_d['y'][-window_size:],
+                                        label=p_c['plot_vars']['legend_y'], color='orange')
+                if Z:
+                    plot_axs(indx).plot(p_d['t'][-window_size:], p_d['z'][-window_size:],
+                                        label=p_c['plot_vars']['legend_z'], color='black')
             else:
-                plot_axs(i).plot(p_d['t'][-window_size:], p_d['x'][-window_size:],
-                                 label=p_c['plot_vars']['legend_x'])
-                plot_axs(i).plot(p_d['t'][-window_size:], p_d['y'][-window_size:],
-                                 label=p_c['plot_vars']['legend_y'])
-                plot_axs(i).plot(p_d['t'][-window_size:], p_d['z'][-window_size:],
-                                 label=p_c['plot_vars']['legend_z'])
+                if p_c['var'] == 'vel':
+                    if common_plot_indx is None:
+                        common_plot_indx = indx = i
+                    else:
+                        indx = common_plot_indx
+                else:
+                    indx = i
+
+                if X:
+                    plot_axs(indx).plot(p_d['t'][-window_size:], p_d['x'][-window_size:],
+                                        label=p_c['plot_vars']['legend_x'])
+                    # x_mean = [np.mean(p_d['x'][-window_size:])] * (window_size-1)
+                    # plot_axs(indx).plot(p_d['t'][-window_size:], x_mean, label='X-Mean',
+                    #                     color='pink')
+                if Y:
+                    plot_axs(indx).plot(p_d['t'][-window_size:], p_d['y'][-window_size:],
+                                        label=p_c['plot_vars']['legend_y'])
+                if Z:
+                    plot_axs(indx).plot(p_d['t'][-window_size:], p_d['z'][-window_size:],
+                                        label=p_c['plot_vars']['legend_z'])
+                    # z_mean = [np.mean(p_d['z'][-window_size:])] * (window_size-1)
+                    # plot_axs(indx).plot(p_d['t'][-window_size:], z_mean, label='Z-Mean',
+                    #                     color='yellow')
 
             plot_axs(i).title.set_text(p_c['plot_vars']['subtitle'] % (p_c['char'].upper(),
                                                                        p_c['obj'].upper()))
             plot_axs(i).set(ylabel=p_c['plot_vars']['y_label'])
-            plot_axs(i).legend(loc='upper right')
+            # plot_axs(i).legend(loc='upper right')
+            plot_axs(i).legend(loc='center left', bbox_to_anchor=(1, 0.5), prop={'size': 12})
 
             if i == num_plots-1:
                 plot_axs(i).set(xlabel='Time(s)')
