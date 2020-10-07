@@ -147,6 +147,11 @@ def main(argv):
                 for axis, n, c in zip(joint, joint_names[i], colors[i]):
                     plot_axs(i).plot(t[-window_size:], plot_data[:len(t), axis].tolist(),
                                      color=c, label=n)
+                    mean = [np.mean(plot_data[:len(t), axis])] * (window_size-1)
+                    try:
+                        plot_axs(i).plot(t[-window_size:], mean, label=('%d-Mean' % (i+1)))
+                    except ValueError:
+                        pass
                 if i == np.ceil(num_plots/2):
                     plot_axs(i).set(ylabel='Joint Ang.')
                 plot_axs(i).legend(loc='center left', bbox_to_anchor=(1, 0.5),
@@ -158,6 +163,11 @@ def main(argv):
                 for axis, n, c in zip(joint, joint_names[i], colors[i]):
                     plot_axs(0).plot(t[-window_size:], plot_data[:len(t), axis].tolist(), color=c,
                                      label=n)
+                    mean = [np.mean(plot_data[:len(t), axis])] * (window_size-1)
+                    try:
+                        plot_axs(0).plot(t[-window_size:], mean, label=('%d-Mean' % (i+1)))
+                    except ValueError:
+                        pass
             plot_axs(0).set(xlabel='Time(s)', ylabel='Joint Ang.')
             plot_axs(0).legend(bbox_to_anchor=(0.5, -0.08*num_plots), loc='upper center', ncol=5,
                                prop={'size': 12})
