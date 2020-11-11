@@ -18,6 +18,7 @@ run_args_dict['running'] = '/home/nash/DeepMimic/args/run_humanoid3d_run_args.tx
 run_args_dict['walking'] = '/home/nash/DeepMimic/args/run_humanoid3d_walk_args.txt'
 
 run_args_dict['walk'] = '/home/nash/DeepMimic/args/run_salamander_walk_args.txt'
+run_args_dict['walker'] = '/home/nash/DeepMimic/args/run_biped_args.txt'
 run_args_dict['run'] = '/home/nash/DeepMimic/args/run_cheetah_args.txt'
 run_args_dict['slither'] = '/home/nash/DeepMimic/args/run_snake_slither_args.txt'
 run_args_dict['caterpillar'] = '/home/nash/DeepMimic/args/run_snake_caterpillar_args.txt'
@@ -30,18 +31,27 @@ def extract_training_folders(behavior_folder, training_folders):
     if 'MIG2019' in behavior_folder:
         behavior = behavior_folder[behavior_folder.find('MIG2019'):]
         behavior = behavior.replace("MIG2019/", "")
+        character = None
     elif 'humanoid' in behavior_folder:
         behavior = behavior_folder[behavior_folder.find('humanoid3d'):]
         behavior = behavior.replace("humanoid3d/", "")
+        character = 'humanoid3d'
+    elif 'biped' in behavior_folder:
+        behavior = behavior_folder[behavior_folder.find('biped'):]
+        behavior = behavior.replace("biped/", "")
+        character = 'biped'
     elif 'salamander' in behavior_folder:
         behavior = behavior_folder[behavior_folder.find('salamander'):]
         behavior = behavior.replace("salamander/", "")
+        character = 'salamander'
     elif 'cheetah' in behavior_folder:
         behavior = behavior_folder[behavior_folder.find('cheetah'):]
         behavior = behavior.replace("cheetah/", "")
+        character = 'cheetah'
     elif 'snake' in behavior_folder:
         behavior = behavior_folder[behavior_folder.find('snake'):]
         behavior = behavior.replace("snake/", "")
+        character = 'snake'
     else:
         print("Error: Either missing or unknown character in folder path: ", behavior_folder)
         sys.exit()
@@ -78,7 +88,7 @@ def extract_training_folders(behavior_folder, training_folders):
         elif 'pca' in d:
             training_folders.append(d)
 
-    return behavior, training_folders
+    return character, behavior, training_folders
 
 
 def extract_training_info(training_folders, behavior, baseline, pca, ica, eval, num_evals,
@@ -172,7 +182,8 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_
                     reduced_motion_file, character_file, imitate_exctn, intermediate_model,
                     log_excitations, log_actions, log_pose, record_video=False, select_k=None,
                     com_threshold=-1.0, check_collision=False, allow_parent_collision=False,
-                    no_flight_phase=False, root_rot_thrshld_x=None, root_rot_thrshld_y=None):
+                    no_flight_phase=False, root_rot_thrshld_x=None, root_rot_thrshld_y=None,
+                    self=False, character=None):
     # Iterate through a list of trained-model folders dictionary
     for train_dict in sorted_training_list:
         # Create an args-parser object and load the args-file
@@ -207,6 +218,26 @@ def create_run_file(sorted_training_list, eval, eval_reward_fn, num_evals, eval_
         # Add character file
         if character_file is not None:
             arg_parser._table['--character_files'] = '--character_files ' + character_file
+
+        # Add character file
+        if self:
+            files = [f for f in os.listdir(train_dict['location'])
+                     if os.path.isfile(os.path.join(train_dict['location'], f))]
+
+            motion_file = arg_parser._table['--motion_file']
+
+            for f in files:
+                if character in f:
+                    if not ('babble' in f or 'ctrl' in f or 'job' in f or 'train' in f):
+                        char_file = os.path.join(train_dict['location'], f)
+                    if 'ctrl' in f:
+                        ctrl_file = os.path.join(train_dict['location'], f)
+                    if 'run' in f and 'babble' not in f:
+                        motion_file = os.path.join(train_dict['location'], f)
+
+            arg_parser._table['--character_files'] = '--character_files ' + char_file
+            arg_parser._table['--char_ctrl_files'] = '--char_ctrl_files ' + ctrl_file
+            arg_parser._table['--motion_file'] = '--motion_file ' + motion_file
 
         # Add select_k arg
         if select_k is not None:
@@ -413,6 +444,7 @@ def main(argv):
     baseline = False
     pca = False
     ica = False
+    self = False
 
     eval = False
     num_evals = 20
@@ -439,15 +471,15 @@ def main(argv):
     behavior = None
 
     try:
-        opts, args = getopt.getopt(argv, "h aAbpiefxoPRScFvC:l:m:M:n:d:r:I:D:B:k:L:X:Y:",
+        opts, args = getopt.getopt(argv, "h aAbpiefxoPRScFvsC:l:m:M:n:d:r:I:D:B:k:L:X:Y:",
                                    ["log_actions", "allow_parent_collision", "baseline", "pca",
                                     "imitate_excitations", "eval", "force_eval", "log_excitations",
                                     "log_pose", "playback", "reduced", "single", "check_collision",
-                                    "no_flight_phase", "record_video", "character=", "location=",
-                                    "reduced_motion_file=", "character_model_file=", "num_evals=",
-                                    "duration=", "reward_fn=", "intermediate_model=", "dimension=",
-                                    "behavior=", "select_k=", "low_com=", "root_rot_threshold_x=",
-                                    "root_rot_threshold_y"])
+                                    "no_flight_phase", "record_video", "self", "character=",
+                                    "location=", "reduced_motion_file=", "character_model_file=",
+                                    "num_evals=", "duration=", "reward_fn=", "intermediate_model=",
+                                    "dimension=", "behavior=", "select_k=", "low_com=",
+                                    "root_rot_threshold_x=", "root_rot_threshold_y="])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -521,6 +553,8 @@ def main(argv):
             root_rot_thrshld_y = float(arg)
         elif opt in ("-v", "--record_video"):
             record_video = True
+        elif opt in ("-s", "--self"):
+            self = True
 
     if playback:
         cmd = list()
@@ -558,7 +592,7 @@ def main(argv):
 
     # Extract individual training folders
     training_folders = []
-    behavior, training_folders = \
+    character, behavior, training_folders = \
         extract_training_folders(behavior_folder, training_folders)
 
     # Extract info from individual training folders
@@ -575,7 +609,7 @@ def main(argv):
                     reduced_motion_file, character_file, imitate_exctn, intermediate_model,
                     log_excitations, log_actions, log_pose, record_video, select_k, com_threshold,
                     check_collision, allow_parent_collision, no_flight_phase, root_rot_thrshld_x,
-                    root_rot_thrshld_y)
+                    root_rot_thrshld_y, self, character)
 
     # Evaluate each trailed case in the list
     for train_dict in sorted_training_list:
