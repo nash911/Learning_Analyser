@@ -468,6 +468,8 @@ def main(argv):
     reduced_motion = False
     single = False
     dimension = None
+    dim_max = None
+    dim_min = None
     behavior = None
 
     try:
@@ -532,7 +534,11 @@ def main(argv):
             try:
                 dimension = int(arg)
             except ValueError:
-                dimension = list(map(int, arg.strip('[]').split(',')))
+                if ':' in arg:
+                    dim_min = list(map(int, arg.strip('[]').split(':')))[0]
+                    dim_max = list(map(int, arg.strip('[]').split(':')))[1]
+                else:
+                    dimension = list(map(int, arg.strip('[]').split(',')))
         elif opt in ("-B", "--behavior"):
             behavior = arg
         elif opt in ("-k", "--select_k"):
@@ -558,6 +564,13 @@ def main(argv):
 
     if playback:
         cmd = list()
+        if dimension is None:
+            if dim_max > dim_min:
+                dimension = list(range(dim_min, dim_max+1))
+            else:
+                print("Error: Invalid dimension range for playback")
+                sys.exit()
+
         if type(dimension) == list:
             if len(dimension) == 1:
                 dimension = list(range(1, dimension[0]+1))
